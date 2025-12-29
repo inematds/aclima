@@ -371,11 +371,11 @@ export default function EstadoPainel1Page() {
             {/* Coluna 3: Mapa e Alertas */}
             <div className="col-span-3 flex flex-col gap-4">
               {/* Mapa */}
-              <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                 <div className="p-3 border-b bg-gray-50">
                   <h3 className="font-semibold text-gray-900">Mapa - {stateInfo?.name}</h3>
                 </div>
-                <div className="h-[calc(100%-48px)]">
+                <div className="h-[280px]">
                   <WeatherMapDynamic
                     stations={weatherData}
                     selectedStation={selectedStation}

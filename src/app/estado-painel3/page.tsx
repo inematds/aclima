@@ -225,7 +225,7 @@ export default function EstadoPainel3Page() {
                 </div>
 
                 {/* Grid de Sensores */}
-                <div className="flex-1 grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {/* Precipitação */}
                   <div className="bg-white rounded-lg shadow-sm border p-4">
                     <div className="flex items-center justify-between mb-2">
