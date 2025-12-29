@@ -251,14 +251,8 @@ export default function WeatherDashboard() {
         </div>
       </div>
 
-      {/* Busca de Cidade e Mapas de Previsão */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CitySearch />
-        <ForecastMapsDynamic
-          latitude={capitalCoords.lat}
-          longitude={capitalCoords.lng}
-        />
-      </div>
+      {/* Busca de Cidade */}
+      <CitySearch />
 
       {/* Lista de estações */}
       <div className="bg-white rounded-xl shadow-sm p-6">
@@ -372,6 +366,24 @@ export default function WeatherDashboard() {
           </div>
         </div>
       )}
+
+      {/* Mapas de Previsão - Seção Final */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Mapas de Previsão - {stateInfo?.name}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Radar de precipitação e camadas meteorológicas em tempo real
+          </p>
+        </div>
+        <div className="p-4">
+          <ForecastMapsDynamic
+            latitude={capitalCoords.lat}
+            longitude={capitalCoords.lng}
+          />
+        </div>
+      </div>
     </div>
   )
 }
