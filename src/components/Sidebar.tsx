@@ -1,0 +1,116 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  CloudRain,
+  AlertTriangle,
+  Radio,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react'
+
+const menuItems = [
+  {
+    name: 'Situação Atual',
+    href: '/',
+    icon: CloudRain,
+    description: 'Visão geral meteorológica'
+  },
+  {
+    name: 'Alertas',
+    href: '/alertas',
+    icon: AlertTriangle,
+    description: 'Alertas hidrológicos e risco'
+  },
+  {
+    name: 'Estações',
+    href: '/estacoes',
+    icon: Radio,
+    description: 'Dados das estações'
+  },
+  {
+    name: 'Histórico',
+    href: '/historico',
+    icon: BarChart3,
+    description: 'Dados históricos'
+  },
+]
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false)
+  const pathname = usePathname()
+
+  return (
+    <aside
+      className={`
+        bg-slate-900 text-white flex flex-col transition-all duration-300
+        ${collapsed ? 'w-16' : 'w-64'}
+      `}
+    >
+      {/* Logo */}
+      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            <CloudRain className="h-8 w-8 text-blue-400" />
+            <span className="font-bold text-xl">AClima</span>
+          </div>
+        )}
+        {collapsed && <CloudRain className="h-8 w-8 text-blue-400 mx-auto" />}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 hover:bg-slate-700 rounded"
+        >
+          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
+      </div>
+
+      {/* Menu */}
+      <nav className="flex-1 py-4">
+        <ul className="space-y-1 px-2">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`
+                    flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                    ${isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }
+                  `}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <item.icon size={20} />
+                  {!collapsed && (
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-xs text-slate-400">{item.description}</div>
+                    </div>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
+
+      {/* Configurações */}
+      <div className="p-2 border-t border-slate-700">
+        <Link
+          href="/configuracoes"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          title={collapsed ? 'Configurações' : undefined}
+        >
+          <Settings size={20} />
+          {!collapsed && <span>Configurações</span>}
+        </Link>
+      </div>
+    </aside>
+  )
+}
