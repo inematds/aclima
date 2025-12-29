@@ -84,7 +84,9 @@ export default function ForecastMaps({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const hasOwmKey = typeof window !== 'undefined' && !!process.env.NEXT_PUBLIC_OWM_API_KEY
+  // NEXT_PUBLIC_ variables are inlined at build time
+  const owmApiKey = process.env.NEXT_PUBLIC_OWM_API_KEY || ''
+  const hasOwmKey = owmApiKey.length > 0
 
   // Fetch RainViewer data
   const fetchRainViewerData = useCallback(async () => {
@@ -139,9 +141,8 @@ export default function ForecastMaps({
 
   // Get OpenWeatherMap tile URL
   const getOwmTileUrl = (layer: string, x: number, y: number) => {
-    const apiKey = process.env.NEXT_PUBLIC_OWM_API_KEY
-    if (!apiKey) return null
-    return `https://tile.openweathermap.org/map/${layer}/${zoom}/${x}/${y}.png?appid=${apiKey}`
+    if (!owmApiKey) return null
+    return `https://tile.openweathermap.org/map/${layer}/${zoom}/${x}/${y}.png?appid=${owmApiKey}`
   }
 
   // Generate a larger map view (3x3 tiles)
@@ -299,15 +300,29 @@ export default function ForecastMaps({
                       <img
                         src={url}
                         alt=""
-                        className="w-full h-full object-cover opacity-80"
+                        className="w-full h-full object-cover"
                         loading="lazy"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
+                          console.error('OWM tile error:', url)
+                          ;(e.target as HTMLImageElement).style.display = 'none'
                         }}
                       />
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Message if no OWM key */}
+            {activeLayer !== 'radar' && !hasOwmKey && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-lg p-4 text-center max-w-sm mx-4">
+                  <Lock className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-gray-700 font-medium">Chave API não configurada</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configure NEXT_PUBLIC_OWM_API_KEY no Vercel para usar esta camada
+                  </p>
+                </div>
               </div>
             )}
 
