@@ -335,11 +335,11 @@ export default function EstadoPainel3Page() {
           {/* Status e Resumo */}
           <div className="col-span-3 flex flex-col gap-4">
             {/* Mapa */}
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden flex-1">
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
               <div className="p-2 border-b bg-gray-50">
                 <h3 className="font-semibold text-gray-900 text-sm">Mapa - {stateInfo?.name}</h3>
               </div>
-              <div className="h-[200px]">
+              <div className="h-[280px]">
                 <WeatherMapDynamic
                   stations={weatherData}
                   selectedStation={selectedStation}

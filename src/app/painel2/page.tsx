@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react'
 import CapitalSelector from '@/components/CapitalSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -206,56 +207,16 @@ export default function Painel2Page() {
                 </div>
               </div>
 
-              {/* Mapa Placeholder com pontos */}
-              <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 relative p-4">
-                {weatherData.map((station, i) => {
-                  if (station.alertLevel === 'normal') return null
-                  const level = getAlertLevel(station.alertLevel)
-                  const config = alertLevelConfig[level]
-                  const positions = [
-                    { top: '20%', left: '45%' },
-                    { top: '70%', left: '30%' },
-                    { top: '35%', left: '60%' },
-                    { top: '55%', left: '75%' },
-                    { top: '45%', left: '25%' },
-                  ]
-                  const pos = positions[i % positions.length]
-
-                  return (
-                    <button
-                      key={station.stationId}
-                      className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${
-                        selectedStation === station.stationId ? 'z-10 scale-125' : ''
-                      } transition-transform`}
-                      style={{ top: pos.top, left: pos.left }}
-                      onClick={() => setSelectedStation(station.stationId)}
-                    >
-                      <div className={`p-2 rounded-full ${config.bg} border-2 ${config.border} shadow-lg`}>
-                        <config.icon className={`h-5 w-5 ${config.color}`} />
-                      </div>
-                      {station.alertLevel === 'severe' && (
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-
-                {stationsWithAlerts.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <Shield className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                      <p className="text-sm font-medium text-green-600">Sem alertas ativos</p>
-                      <p className="text-xs">Todas as estações estão normais</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="absolute bottom-4 left-4 bg-white/90 rounded-lg p-2 text-xs text-gray-500">
-                  <p>Clique nos pontos para detalhes</p>
-                </div>
+              {/* Mapa */}
+              <div className="flex-1">
+                <WeatherMapDynamic
+                  stations={weatherData}
+                  selectedStation={selectedStation}
+                  onStationSelect={setSelectedStation}
+                  center={[capitalInfo.latitude, capitalInfo.longitude]}
+                  zoom={10}
+                  className="h-full"
+                />
               </div>
             </div>
 

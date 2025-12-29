@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import StateSelector from './StateSelector'
+import CitySearch from './CitySearch'
 import {
   Droplets,
   Thermometer,
@@ -238,6 +239,26 @@ export default function WeatherDashboard() {
             {weatherData.filter(w => w.alertLevel === 'severe').length} severos,{' '}
             {weatherData.filter(w => w.alertLevel === 'alert').length} alertas
           </p>
+        </div>
+      </div>
+
+      {/* Busca de Cidade */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-1">
+          <CitySearch />
+        </div>
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border p-4">
+          <h3 className="font-semibold text-gray-900 mb-2">Buscar qualquer cidade</h3>
+          <p className="text-sm text-gray-500">
+            Digite o nome de qualquer cidade brasileira no campo ao lado para ver as condições meteorológicas em tempo real.
+            Os dados são fornecidos pela API Open-Meteo com base nas coordenadas da cidade.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">Temperatura</span>
+            <span className="text-xs bg-cyan-50 text-cyan-600 px-2 py-1 rounded">Umidade</span>
+            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded">Precipitação</span>
+            <span className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">Vento</span>
+          </div>
         </div>
       </div>
 

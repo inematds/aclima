@@ -2,17 +2,16 @@
 
 import { useState } from 'react'
 import {
-  MapPin,
   Droplets,
   Clock,
   TrendingUp,
-  TrendingDown,
   Minus,
   AlertTriangle,
   RefreshCw,
   Loader2
 } from 'lucide-react'
 import CapitalSelector from '@/components/CapitalSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -307,18 +306,20 @@ export default function Painel1Page() {
 
             {/* Coluna 3: Mapa e Alertas */}
             <div className="col-span-3 flex flex-col gap-4">
-              {/* Mapa Placeholder */}
+              {/* Mapa */}
               <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
                 <div className="p-3 border-b bg-gray-50">
                   <h3 className="font-semibold text-gray-900">Mapa - {capitalInfo.name}</h3>
                 </div>
-                <div className="h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center p-4">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">Mapa com heatmap</p>
-                    <p className="text-xs">Em desenvolvimento</p>
-                    <p className="text-xs mt-2">(Leaflet/MapBox)</p>
-                  </div>
+                <div className="h-[calc(100%-48px)]">
+                  <WeatherMapDynamic
+                    stations={weatherData}
+                    selectedStation={selectedStation}
+                    onStationSelect={setSelectedStation}
+                    center={[capitalInfo.latitude, capitalInfo.longitude]}
+                    zoom={10}
+                    className="h-full"
+                  />
                 </div>
               </div>
 

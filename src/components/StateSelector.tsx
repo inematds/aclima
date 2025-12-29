@@ -70,12 +70,12 @@ export default function StateSelector({ selectedState, onSelect, loading }: Stat
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[1001]"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Dropdown */}
-          <div className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-[70vh] overflow-hidden">
+          <div className="absolute top-full left-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-[1002] max-h-[70vh] overflow-hidden">
             {/* Search */}
             <div className="p-3 border-b border-gray-100">
               <div className="relative">

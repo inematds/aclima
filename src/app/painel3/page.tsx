@@ -11,13 +11,10 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Zap,
   Loader2
 } from 'lucide-react'
 import CapitalSelector from '@/components/CapitalSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 import { useWeather, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -344,6 +341,23 @@ export default function Painel3Page() {
 
           {/* Status e Resumo */}
           <div className="col-span-3 flex flex-col gap-4">
+            {/* Mapa */}
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="p-2 border-b bg-gray-50">
+                <h3 className="font-semibold text-gray-900 text-sm">Mapa - {capitalInfo.name}</h3>
+              </div>
+              <div className="h-[200px]">
+                <WeatherMapDynamic
+                  stations={weatherData}
+                  selectedStation={selectedStation}
+                  onStationSelect={setSelectedStation}
+                  center={[capitalInfo.latitude, capitalInfo.longitude]}
+                  zoom={10}
+                  className="h-full"
+                />
+              </div>
+            </div>
+
             {/* Resumo da Capital */}
             <div className="bg-white rounded-lg shadow-sm border p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Resumo - {capitalInfo.name}</h3>
