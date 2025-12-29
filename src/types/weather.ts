@@ -203,3 +203,43 @@ export const MONITORED_STATIONS = STATION_INFO
 
 export type StationCode = keyof typeof STATION_INFO
 export type CapitalSlug = keyof typeof BRAZILIAN_CAPITALS
+
+// Estados brasileiros
+export interface StateInfo {
+  name: string
+  code: string
+  region: string
+  capital: string
+}
+
+export const BRAZILIAN_STATES: Record<string, StateInfo> = {
+  'AC': { name: 'Acre', code: 'AC', region: 'Norte', capital: 'Rio Branco' },
+  'AL': { name: 'Alagoas', code: 'AL', region: 'Nordeste', capital: 'Maceió' },
+  'AP': { name: 'Amapá', code: 'AP', region: 'Norte', capital: 'Macapá' },
+  'AM': { name: 'Amazonas', code: 'AM', region: 'Norte', capital: 'Manaus' },
+  'BA': { name: 'Bahia', code: 'BA', region: 'Nordeste', capital: 'Salvador' },
+  'CE': { name: 'Ceará', code: 'CE', region: 'Nordeste', capital: 'Fortaleza' },
+  'DF': { name: 'Distrito Federal', code: 'DF', region: 'Centro-Oeste', capital: 'Brasília' },
+  'ES': { name: 'Espírito Santo', code: 'ES', region: 'Sudeste', capital: 'Vitória' },
+  'GO': { name: 'Goiás', code: 'GO', region: 'Centro-Oeste', capital: 'Goiânia' },
+  'MA': { name: 'Maranhão', code: 'MA', region: 'Nordeste', capital: 'São Luís' },
+  'MT': { name: 'Mato Grosso', code: 'MT', region: 'Centro-Oeste', capital: 'Cuiabá' },
+  'MS': { name: 'Mato Grosso do Sul', code: 'MS', region: 'Centro-Oeste', capital: 'Campo Grande' },
+  'MG': { name: 'Minas Gerais', code: 'MG', region: 'Sudeste', capital: 'Belo Horizonte' },
+  'PA': { name: 'Pará', code: 'PA', region: 'Norte', capital: 'Belém' },
+  'PB': { name: 'Paraíba', code: 'PB', region: 'Nordeste', capital: 'João Pessoa' },
+  'PR': { name: 'Paraná', code: 'PR', region: 'Sul', capital: 'Curitiba' },
+  'PE': { name: 'Pernambuco', code: 'PE', region: 'Nordeste', capital: 'Recife' },
+  'PI': { name: 'Piauí', code: 'PI', region: 'Nordeste', capital: 'Teresina' },
+  'RJ': { name: 'Rio de Janeiro', code: 'RJ', region: 'Sudeste', capital: 'Rio de Janeiro' },
+  'RN': { name: 'Rio Grande do Norte', code: 'RN', region: 'Nordeste', capital: 'Natal' },
+  'RS': { name: 'Rio Grande do Sul', code: 'RS', region: 'Sul', capital: 'Porto Alegre' },
+  'RO': { name: 'Rondônia', code: 'RO', region: 'Norte', capital: 'Porto Velho' },
+  'RR': { name: 'Roraima', code: 'RR', region: 'Norte', capital: 'Boa Vista' },
+  'SC': { name: 'Santa Catarina', code: 'SC', region: 'Sul', capital: 'Florianópolis' },
+  'SP': { name: 'São Paulo', code: 'SP', region: 'Sudeste', capital: 'São Paulo' },
+  'SE': { name: 'Sergipe', code: 'SE', region: 'Nordeste', capital: 'Aracaju' },
+  'TO': { name: 'Tocantins', code: 'TO', region: 'Norte', capital: 'Palmas' },
+}
+
+export type StateCode = keyof typeof BRAZILIAN_STATES

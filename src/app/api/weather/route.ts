@@ -1,11 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { STATION_INFO, BRAZILIAN_CAPITALS, type WeatherData, type CapitalSlug } from '@/types/weather'
+import { STATION_INFO, BRAZILIAN_CAPITALS, BRAZILIAN_STATES, type WeatherData, type CapitalSlug, type StateCode } from '@/types/weather'
 
 const INMET_API_BASE = 'https://apitempo.inmet.gov.br'
 
 // Cache em memória
 const weatherCache: Map<string, { data: any; timestamp: number }> = new Map()
+const stationsCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 }
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const STATIONS_CACHE_TTL = 60 * 60 * 1000 // 1 hora para lista de estações
+
+// Buscar lista de todas as estações do INMET
+async function fetchAllStations(): Promise<any[]> {
+  if (stationsCache.data && Date.now() - stationsCache.timestamp < STATIONS_CACHE_TTL) {
+    return stationsCache.data
+  }
+
+  try {
+    const response = await fetch(`${INMET_API_BASE}/estacoes/T`, {
+      headers: { 'Accept': 'application/json' },
+      next: { revalidate: 3600 }
+    })
+
+    if (!response.ok) {
+      console.error(`Error fetching stations list: ${response.status}`)
+      return stationsCache.data || []
+    }
+
+    const data = await response.json()
+    stationsCache.data = data
+    stationsCache.timestamp = Date.now()
+    return data
+  } catch (error) {
+    console.error('Error fetching stations list:', error)
+    return stationsCache.data || []
+  }
+}
+
+// Buscar estações por estado
+async function getStationsByState(stateCode: string): Promise<string[]> {
+  const allStations = await fetchAllStations()
+
+  return allStations
+    .filter((s: any) =>
+      s.SG_ESTADO === stateCode &&
+      s.CD_SITUACAO === 'Operante' &&
+      s.TP_ESTACAO === 'Automatica'
+    )
+    .map((s: any) => s.CD_ESTACAO)
+}
+
+// Verificar se estado tem dados disponíveis
+async function checkStateHasData(stateCode: string): Promise<{ hasData: boolean; stationCount: number }> {
+  const stations = await getStationsByState(stateCode)
+  return {
+    hasData: stations.length > 0,
+    stationCount: stations.length
+  }
+}
 
 // Calcular nível de alerta baseado em precipitação
 function calculateAlertLevel(rain1h: number, rain24h: number): 'normal' | 'attention' | 'alert' | 'severe' {
@@ -67,11 +118,11 @@ async function fetchStationData(stationCode: string): Promise<any[]> {
 }
 
 // Processar dados brutos em formato normalizado
-function processStationData(rawData: any[], stationCode: string): WeatherData | null {
+function processStationData(rawData: any[], stationCode: string, stationMeta?: any): WeatherData | null {
   if (!rawData || rawData.length === 0) return null
 
+  // Tentar pegar info do cache local ou dos metadados
   const stationInfo = STATION_INFO[stationCode]
-  if (!stationInfo) return null
 
   // Ordenar por data/hora (mais recente primeiro)
   const sortedData = [...rawData].sort((a, b) => {
@@ -127,13 +178,16 @@ function processStationData(rawData: any[], stationCode: string): WeatherData | 
   // Calcular taxa de chuva atual (mm/h aproximado)
   const rainCurrent = rain1h // Simplificado
 
+  // Nome da estação: usar do cache local ou do metadata ou do dado bruto
+  const stationName = stationInfo?.name || stationMeta?.DC_NOME || latest.DC_NOME || stationCode
+
   return {
     stationId: stationCode,
-    stationName: stationInfo.name,
-    state: latest.UF || 'SP',
+    stationName: stationName,
+    state: latest.UF || stationMeta?.SG_ESTADO || stationInfo?.state || '',
     coordinates: {
-      lat: parseFloat(latest.VL_LATITUDE) || 0,
-      lng: parseFloat(latest.VL_LONGITUDE) || 0
+      lat: parseFloat(latest.VL_LATITUDE) || parseFloat(stationMeta?.VL_LATITUDE) || 0,
+      lng: parseFloat(latest.VL_LONGITUDE) || parseFloat(stationMeta?.VL_LONGITUDE) || 0
     },
     timestamp: latestDate.toISOString(),
 
@@ -173,8 +227,30 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const stationCode = searchParams.get('station')
   const capitalSlug = searchParams.get('capital') as CapitalSlug | null
+  const stateCode = searchParams.get('state') as StateCode | null
+  const checkState = searchParams.get('checkState') // Para validar se estado tem dados
 
   try {
+    // Verificar se estado tem dados
+    if (checkState) {
+      const stateInfo = BRAZILIAN_STATES[checkState]
+      if (!stateInfo) {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid state code'
+        }, { status: 400 })
+      }
+
+      const { hasData, stationCount } = await checkStateHasData(checkState)
+      return NextResponse.json({
+        success: true,
+        state: stateInfo,
+        hasData,
+        stationCount,
+        timestamp: new Date().toISOString()
+      })
+    }
+
     if (stationCode) {
       // Buscar uma estação específica
       const rawData = await fetchStationData(stationCode)
@@ -195,29 +271,89 @@ export async function GET(request: NextRequest) {
     }
 
     // Determinar quais estações buscar
-    let stationCodes: string[]
-    let capitalInfo = null
+    let stationCodes: string[] = []
+    let locationInfo: any = null
+    let allStations: any[] = []
 
-    if (capitalSlug && BRAZILIAN_CAPITALS[capitalSlug]) {
+    if (stateCode && BRAZILIAN_STATES[stateCode]) {
+      // Buscar todas as estações do estado
+      const stateInfo = BRAZILIAN_STATES[stateCode]
+      allStations = await fetchAllStations()
+
+      const stateStations = allStations.filter((s: any) =>
+        s.SG_ESTADO === stateCode &&
+        s.CD_SITUACAO === 'Operante' &&
+        s.TP_ESTACAO === 'Automatica'
+      )
+
+      stationCodes = stateStations.map((s: any) => s.CD_ESTACAO)
+
+      locationInfo = {
+        type: 'state',
+        name: stateInfo.name,
+        code: stateInfo.code,
+        region: stateInfo.region,
+        capital: stateInfo.capital,
+        totalStations: stationCodes.length
+      }
+    } else if (capitalSlug && BRAZILIAN_CAPITALS[capitalSlug]) {
       // Buscar estações de uma capital específica
-      capitalInfo = BRAZILIAN_CAPITALS[capitalSlug]
+      const capitalInfo = BRAZILIAN_CAPITALS[capitalSlug]
       stationCodes = capitalInfo.stations
+
+      locationInfo = {
+        type: 'capital',
+        name: capitalInfo.name,
+        state: capitalInfo.state,
+        stateCode: capitalInfo.stateCode,
+        region: capitalInfo.region
+      }
     } else {
       // Default: São Paulo
-      capitalInfo = BRAZILIAN_CAPITALS['sao-paulo']
-      stationCodes = capitalInfo.stations
+      const defaultState = 'SP'
+      const stateInfo = BRAZILIAN_STATES[defaultState]
+      allStations = await fetchAllStations()
+
+      const stateStations = allStations.filter((s: any) =>
+        s.SG_ESTADO === defaultState &&
+        s.CD_SITUACAO === 'Operante' &&
+        s.TP_ESTACAO === 'Automatica'
+      )
+
+      stationCodes = stateStations.map((s: any) => s.CD_ESTACAO)
+
+      locationInfo = {
+        type: 'state',
+        name: stateInfo.name,
+        code: stateInfo.code,
+        region: stateInfo.region,
+        capital: stateInfo.capital,
+        totalStations: stationCodes.length
+      }
+    }
+
+    // Criar mapa de metadados das estações
+    const stationMetaMap: Record<string, any> = {}
+    if (allStations.length > 0) {
+      for (const s of allStations) {
+        stationMetaMap[s.CD_ESTACAO] = s
+      }
     }
 
     const results: WeatherData[] = []
 
+    // Limitar quantidade de estações para não sobrecarregar
+    const maxStations = 20
+    const stationsToFetch = stationCodes.slice(0, maxStations)
+
     // Buscar em paralelo (com limite)
     const batchSize = 5
-    for (let i = 0; i < stationCodes.length; i += batchSize) {
-      const batch = stationCodes.slice(i, i + batchSize)
+    for (let i = 0; i < stationsToFetch.length; i += batchSize) {
+      const batch = stationsToFetch.slice(i, i + batchSize)
       const batchResults = await Promise.all(
         batch.map(async (code) => {
           const rawData = await fetchStationData(code)
-          return processStationData(rawData, code)
+          return processStationData(rawData, code, stationMetaMap[code])
         })
       )
       results.push(...batchResults.filter((r): r is WeatherData => r !== null))
@@ -231,12 +367,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: results,
       total: results.length,
-      capital: capitalInfo ? {
-        name: capitalInfo.name,
-        state: capitalInfo.state,
-        stateCode: capitalInfo.stateCode,
-        region: capitalInfo.region
-      } : null,
+      totalAvailable: stationCodes.length,
+      location: locationInfo,
       timestamp: new Date().toISOString()
     })
   } catch (error) {

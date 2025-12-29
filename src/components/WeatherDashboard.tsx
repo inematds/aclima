@@ -2,21 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
-import CapitalSelector from './CapitalSelector'
+import { useGeolocation } from '@/hooks/useGeolocation'
+import StateSelector from './StateSelector'
 import {
   Droplets,
   Thermometer,
-  Wind,
   AlertTriangle,
   RefreshCw,
   Clock,
   TrendingUp,
-  TrendingDown,
-  Minus,
-  Loader2
+  Loader2,
+  MapPin,
+  Navigation
 } from 'lucide-react'
-import type { CapitalSlug } from '@/types/weather'
-import { BRAZILIAN_CAPITALS } from '@/types/weather'
+import type { StateCode } from '@/types/weather'
+import { BRAZILIAN_STATES } from '@/types/weather'
 
 const alertColors = {
   normal: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' },
@@ -32,7 +32,18 @@ const statusColors = {
 }
 
 export default function WeatherDashboard() {
-  const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
+  const geolocation = useGeolocation()
+  const [selectedState, setSelectedState] = useState<StateCode | null>(null)
+
+  // Usar estado detectado pela geolocalização quando disponível
+  useEffect(() => {
+    if (!selectedState && geolocation.state && !geolocation.loading) {
+      setSelectedState(geolocation.state)
+    }
+  }, [geolocation.state, geolocation.loading, selectedState])
+
+  // Estado efetivo (selecionado ou detectado ou default)
+  const effectiveState = selectedState || geolocation.state || 'SP'
 
   const {
     data: weatherData,
@@ -40,21 +51,20 @@ export default function WeatherDashboard() {
     error: weatherError,
     lastUpdate,
     refetch: refetchWeather
-  } = useWeather({ refreshInterval: 5 * 60 * 1000, capital: selectedCapital }) // 5 minutos
+  } = useWeather({ refreshInterval: 5 * 60 * 1000, state: effectiveState })
 
   const {
     data: alertsData,
-    loading: alertsLoading,
     summary,
     refetch: refetchAlerts
-  } = useAlerts({ refreshInterval: 10 * 60 * 1000 }) // 10 minutos
+  } = useAlerts({ refreshInterval: 10 * 60 * 1000 })
 
   const handleRefresh = () => {
     refetchWeather()
     refetchAlerts()
   }
 
-  const capitalInfo = BRAZILIAN_CAPITALS[selectedCapital]
+  const stateInfo = BRAZILIAN_STATES[effectiveState]
 
   // Calcular estatísticas gerais
   const stats = {
@@ -72,12 +82,24 @@ export default function WeatherDashboard() {
       : 0,
   }
 
+  // Loading inicial (geolocalização + dados)
+  if (geolocation.loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Navigation className="h-8 w-8 text-blue-500 mx-auto mb-2 animate-pulse" />
+          <p className="text-gray-500">Detectando sua localização...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (weatherLoading && weatherData.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-2" />
-          <p className="text-gray-500">Carregando dados do INMET...</p>
+          <p className="text-gray-500">Carregando dados de {stateInfo?.name || effectiveState}...</p>
         </div>
       </div>
     )
@@ -108,16 +130,25 @@ export default function WeatherDashboard() {
             <h1 className="text-2xl font-bold text-gray-900">
               Situação Meteorológica
             </h1>
-            <CapitalSelector
-              selectedCapital={selectedCapital}
-              onSelect={setSelectedCapital}
+            <StateSelector
+              selectedState={effectiveState}
+              onSelect={(state) => setSelectedState(state)}
+              loading={weatherLoading}
             />
           </div>
-          <p className="text-gray-500 flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Última atualização: {lastUpdate ? formatTimeAgo(lastUpdate) : 'N/A'}
+          <div className="flex items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              Atualização: {lastUpdate ? formatTimeAgo(lastUpdate) : 'N/A'}
+            </span>
+            {geolocation.state === effectiveState && !selectedState && (
+              <span className="flex items-center gap-1 text-blue-600">
+                <Navigation className="h-3 w-3" />
+                Localização detectada
+              </span>
+            )}
             {weatherLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          </p>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -154,7 +185,7 @@ export default function WeatherDashboard() {
             <span className="text-lg text-gray-500">mm/h</span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            {weatherData.length} estações
+            {weatherData.length} estações em {stateInfo?.name}
           </p>
         </div>
 
@@ -188,23 +219,24 @@ export default function WeatherDashboard() {
         </div>
 
         <div className={`rounded-xl border-l-4 p-4 bg-white shadow-sm ${
-          summary.severe > 0 ? 'border-red-500' :
-          summary.alert > 0 ? 'border-orange-500' :
-          summary.attention > 0 ? 'border-yellow-500' : 'border-green-500'
+          weatherData.filter(w => w.alertLevel === 'severe').length > 0 ? 'border-red-500' :
+          weatherData.filter(w => w.alertLevel === 'alert').length > 0 ? 'border-orange-500' :
+          weatherData.filter(w => w.alertLevel === 'attention').length > 0 ? 'border-yellow-500' : 'border-green-500'
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-600">Alertas Ativos</span>
+            <span className="text-sm font-medium text-gray-600">Estações em Alerta</span>
             <AlertTriangle className={`h-5 w-5 ${
-              summary.severe > 0 ? 'text-red-500' : 'text-yellow-500'
+              weatherData.filter(w => w.alertLevel === 'severe').length > 0 ? 'text-red-500' : 'text-yellow-500'
             }`} />
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-3xl font-bold text-gray-900">
-              {alertsData.length}
+              {weatherData.filter(w => w.alertLevel !== 'normal').length}
             </span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            {summary.severe} severos, {summary.alert} alertas
+            {weatherData.filter(w => w.alertLevel === 'severe').length} severos,{' '}
+            {weatherData.filter(w => w.alertLevel === 'alert').length} alertas
           </p>
         </div>
       </div>
@@ -212,7 +244,7 @@ export default function WeatherDashboard() {
       {/* Lista de estações */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Estações Monitoradas ({weatherData.length})
+          Estações Monitoradas em {stateInfo?.name} ({weatherData.length})
         </h2>
 
         <div className="overflow-x-auto">
@@ -280,7 +312,8 @@ export default function WeatherDashboard() {
 
         {weatherData.length === 0 && !weatherLoading && (
           <div className="text-center py-8 text-gray-500">
-            <p>Nenhuma estação encontrada</p>
+            <MapPin className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+            <p>Nenhuma estação encontrada em {stateInfo?.name}</p>
           </div>
         )}
       </div>
