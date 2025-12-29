@@ -15,118 +15,18 @@ import {
   TrendingDown,
   Minus,
   Zap,
-  Settings
+  Loader2
 } from 'lucide-react'
+import CapitalSelector from '@/components/CapitalSelector'
+import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
+import { useWeather, formatTimeAgo } from '@/hooks/useWeather'
 
 type SensorStatus = 'online' | 'offline' | 'warning'
-type Trend = 'up' | 'down' | 'stable'
 
-interface Sensor {
-  id: string
-  type: 'rain' | 'temperature' | 'humidity' | 'pressure' | 'wind'
-  value: number
-  unit: string
-  status: SensorStatus
-  trend: Trend
-  lastUpdate: string
-  min24h: number
-  max24h: number
-}
-
-interface Station {
-  id: string
-  name: string
-  code: string
-  location: string
-  zone: string
-  status: SensorStatus
-  lastUpdate: string
-  battery: number
-  signal: number
-  sensors: Sensor[]
-}
-
-const mockStations: Station[] = [
-  {
-    id: '1',
-    name: 'Estação Central',
-    code: 'EST-001',
-    location: 'Praça da Sé, 100',
-    zone: 'Centro',
-    status: 'online',
-    lastUpdate: '30 seg',
-    battery: 92,
-    signal: 98,
-    sensors: [
-      { id: 's1', type: 'rain', value: 4.2, unit: 'mm/h', status: 'online', trend: 'up', lastUpdate: '30s', min24h: 0, max24h: 8.5 },
-      { id: 's2', type: 'temperature', value: 24.5, unit: '°C', status: 'online', trend: 'stable', lastUpdate: '30s', min24h: 19.2, max24h: 28.4 },
-      { id: 's3', type: 'humidity', value: 85, unit: '%', status: 'online', trend: 'up', lastUpdate: '30s', min24h: 62, max24h: 92 },
-      { id: 's4', type: 'pressure', value: 1013.2, unit: 'hPa', status: 'online', trend: 'down', lastUpdate: '30s', min24h: 1008.5, max24h: 1018.3 },
-      { id: 's5', type: 'wind', value: 12.5, unit: 'km/h', status: 'online', trend: 'stable', lastUpdate: '30s', min24h: 2.1, max24h: 25.8 },
-    ]
-  },
-  {
-    id: '2',
-    name: 'Estação Sul',
-    code: 'EST-002',
-    location: 'Av. Interlagos, 500',
-    zone: 'Zona Sul',
-    status: 'online',
-    lastUpdate: '45 seg',
-    battery: 78,
-    signal: 85,
-    sensors: [
-      { id: 's1', type: 'rain', value: 6.8, unit: 'mm/h', status: 'online', trend: 'up', lastUpdate: '45s', min24h: 0, max24h: 12.4 },
-      { id: 's2', type: 'temperature', value: 23.2, unit: '°C', status: 'online', trend: 'down', lastUpdate: '45s', min24h: 18.5, max24h: 27.1 },
-      { id: 's3', type: 'humidity', value: 88, unit: '%', status: 'online', trend: 'up', lastUpdate: '45s', min24h: 65, max24h: 95 },
-      { id: 's4', type: 'pressure', value: 1012.8, unit: 'hPa', status: 'online', trend: 'down', lastUpdate: '45s', min24h: 1007.2, max24h: 1017.8 },
-      { id: 's5', type: 'wind', value: 18.2, unit: 'km/h', status: 'online', trend: 'up', lastUpdate: '45s', min24h: 5.4, max24h: 32.1 },
-    ]
-  },
-  {
-    id: '3',
-    name: 'Estação Norte',
-    code: 'EST-003',
-    location: 'Av. Edu Chaves, 200',
-    zone: 'Zona Norte',
-    status: 'warning',
-    lastUpdate: '5 min',
-    battery: 45,
-    signal: 52,
-    sensors: [
-      { id: 's1', type: 'rain', value: 2.1, unit: 'mm/h', status: 'warning', trend: 'stable', lastUpdate: '5m', min24h: 0, max24h: 5.2 },
-      { id: 's2', type: 'temperature', value: 25.8, unit: '°C', status: 'online', trend: 'stable', lastUpdate: '5m', min24h: 20.1, max24h: 29.2 },
-      { id: 's3', type: 'humidity', value: 75, unit: '%', status: 'online', trend: 'stable', lastUpdate: '5m', min24h: 58, max24h: 85 },
-      { id: 's4', type: 'pressure', value: 1014.1, unit: 'hPa', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-      { id: 's5', type: 'wind', value: 8.5, unit: 'km/h', status: 'online', trend: 'down', lastUpdate: '5m', min24h: 1.2, max24h: 15.4 },
-    ]
-  },
-  {
-    id: '4',
-    name: 'Estação Leste',
-    code: 'EST-004',
-    location: 'Shopping Aricanduva',
-    zone: 'Zona Leste',
-    status: 'offline',
-    lastUpdate: '2 horas',
-    battery: 0,
-    signal: 0,
-    sensors: [
-      { id: 's1', type: 'rain', value: 0, unit: 'mm/h', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-      { id: 's2', type: 'temperature', value: 0, unit: '°C', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-      { id: 's3', type: 'humidity', value: 0, unit: '%', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-      { id: 's4', type: 'pressure', value: 0, unit: 'hPa', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-      { id: 's5', type: 'wind', value: 0, unit: 'km/h', status: 'offline', trend: 'stable', lastUpdate: '2h', min24h: 0, max24h: 0 },
-    ]
-  },
-]
-
-const sensorIcons: Record<string, typeof Droplets> = {
-  rain: Droplets,
-  temperature: Thermometer,
-  humidity: Wind,
-  pressure: Gauge,
-  wind: Wind,
+const statusConfig: Record<SensorStatus, { color: string; bg: string; icon: typeof CheckCircle }> = {
+  online: { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle },
+  warning: { color: 'text-yellow-600', bg: 'bg-yellow-100', icon: AlertTriangle },
+  offline: { color: 'text-red-600', bg: 'bg-red-100', icon: XCircle },
 }
 
 const sensorLabels: Record<string, string> = {
@@ -137,58 +37,52 @@ const sensorLabels: Record<string, string> = {
   wind: 'Vento',
 }
 
-const statusConfig: Record<SensorStatus, { color: string; bg: string; icon: typeof CheckCircle }> = {
-  online: { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle },
-  warning: { color: 'text-yellow-600', bg: 'bg-yellow-100', icon: AlertTriangle },
-  offline: { color: 'text-red-600', bg: 'bg-red-100', icon: XCircle },
-}
-
-const TrendIcon = ({ trend }: { trend: Trend }) => {
-  if (trend === 'up') return <TrendingUp className="h-3 w-3 text-red-500" />
-  if (trend === 'down') return <TrendingDown className="h-3 w-3 text-blue-500" />
-  return <Minus className="h-3 w-3 text-gray-400" />
-}
-
-// Mini gráfico de tendência
-const MiniChart = ({ data }: { data: number[] }) => {
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const range = max - min || 1
-
-  return (
-    <div className="flex items-end gap-0.5 h-8">
-      {data.map((value, i) => {
-        const height = ((value - min) / range) * 100
-        return (
-          <div
-            key={i}
-            className="flex-1 bg-blue-400 rounded-t"
-            style={{ height: `${Math.max(height, 10)}%` }}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
 export default function Painel3Page() {
-  const [selectedStation, setSelectedStation] = useState<string>(mockStations[0].id)
-  const station = mockStations.find(s => s.id === selectedStation)!
+  const [selectedStation, setSelectedStation] = useState<string | null>(null)
+  const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
 
-  const onlineCount = mockStations.filter(s => s.status === 'online').length
-  const warningCount = mockStations.filter(s => s.status === 'warning').length
-  const offlineCount = mockStations.filter(s => s.status === 'offline').length
+  const {
+    data: weatherData,
+    loading: weatherLoading,
+    error: weatherError,
+    refetch: refetchWeather
+  } = useWeather({ refreshInterval: 5 * 60 * 1000, capital: selectedCapital })
+
+  const capitalInfo = BRAZILIAN_CAPITALS[selectedCapital]
+
+  // Contar status das estações
+  const onlineCount = weatherData.filter(s => s.status === 'online').length
+  const delayedCount = weatherData.filter(s => s.status === 'delayed').length
+  const offlineCount = weatherData.filter(s => s.status === 'offline').length
+
+  // Estação selecionada
+  const station = selectedStation
+    ? weatherData.find(s => s.stationId === selectedStation)
+    : weatherData[0]
+
+  // Mapear status da estação
+  const getStationStatus = (status: string): SensorStatus => {
+    if (status === 'online') return 'online'
+    if (status === 'delayed') return 'warning'
+    return 'offline'
+  }
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Painel 3: Estação Climática Realtime
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl font-bold text-gray-900">
+              Painel 3: Estação Climática
+            </h1>
+            <CapitalSelector
+              selectedCapital={selectedCapital}
+              onSelect={setSelectedCapital}
+            />
+          </div>
           <p className="text-sm text-gray-500">
-            Dados brutos e atualizados de sensores com máxima legibilidade
+            Dados em tempo real dos sensores - {capitalInfo.name}, {capitalInfo.stateCode}
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm">
@@ -198,7 +92,7 @@ export default function Painel3Page() {
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <span>{warningCount} alertas</span>
+            <span>{delayedCount} atrasadas</span>
           </div>
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-red-500" />
@@ -207,231 +101,342 @@ export default function Painel3Page() {
         </div>
       </div>
 
-      {/* Layout principal */}
-      <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-        {/* Lista de Estações por Zona */}
-        <div className="col-span-3 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
-          <div className="p-3 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Estações por Zona</h2>
-            <p className="text-xs text-gray-500">{mockStations.length} estações</p>
-          </div>
-
-          <div className="flex-1 overflow-auto">
-            {mockStations.map((s) => {
-              const config = statusConfig[s.status]
-              const StatusIcon = config.icon
-
-              return (
-                <button
-                  key={s.id}
-                  className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    selectedStation === s.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedStation(s.id)}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <Radio className="h-4 w-4 text-blue-500" />
-                      <span className="font-medium text-gray-900">{s.code}</span>
-                    </div>
-                    <StatusIcon className={`h-4 w-4 ${config.color}`} />
-                  </div>
-                  <p className="text-sm text-gray-600 truncate">{s.name}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-400">{s.zone}</span>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {s.lastUpdate}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
+      {weatherLoading && weatherData.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-2" />
+            <p className="text-gray-500">Carregando estações de {capitalInfo.name}...</p>
           </div>
         </div>
-
-        {/* Indicadores Numéricos */}
-        <div className="col-span-6 flex flex-col gap-4">
-          {/* Header da estação selecionada */}
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${statusConfig[station.status].bg}`}>
-                  <Radio className={`h-6 w-6 ${statusConfig[station.status].color}`} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">{station.name}</h3>
-                  <p className="text-sm text-gray-500">{station.code} • {station.location}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="flex items-center gap-1 text-sm">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    <span className="font-medium">{station.battery}%</span>
-                  </div>
-                  <p className="text-xs text-gray-400">Bateria</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center gap-1 text-sm">
-                    <Radio className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium">{station.signal}%</span>
-                  </div>
-                  <p className="text-xs text-gray-400">Sinal</p>
-                </div>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <Settings className="h-5 w-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
+      ) : weatherError && weatherData.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+            <p className="text-red-700 font-medium">Erro ao carregar dados</p>
+            <button
+              onClick={() => refetchWeather()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Tentar novamente
+            </button>
           </div>
+        </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+          {/* Lista de Estações */}
+          <div className="col-span-3 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-gray-50">
+              <h2 className="font-semibold text-gray-900">Estações em {capitalInfo.name}</h2>
+              <p className="text-xs text-gray-500">{weatherData.length} estações</p>
+            </div>
 
-          {/* Grid de Sensores */}
-          <div className="flex-1 grid grid-cols-3 gap-3">
-            {station.sensors.map((sensor) => {
-              const Icon = sensorIcons[sensor.type]
-              const config = statusConfig[sensor.status]
+            <div className="flex-1 overflow-auto">
+              {weatherData.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  <p>Nenhuma estação encontrada</p>
+                </div>
+              ) : (
+                weatherData.map((s) => {
+                  const status = getStationStatus(s.status)
+                  const config = statusConfig[status]
+                  const StatusIcon = config.icon
 
-              return (
-                <div
-                  key={sensor.id}
-                  className={`bg-white rounded-lg shadow-sm border p-4 ${
-                    sensor.status === 'offline' ? 'opacity-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-5 w-5 text-blue-500" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {sensorLabels[sensor.type]}
-                      </span>
-                    </div>
-                    <div className={`p-1 rounded ${config.bg}`}>
-                      {(() => {
-                        const StatusIcon = config.icon
-                        return <StatusIcon className={`h-3 w-3 ${config.color}`} />
-                      })()}
-                    </div>
-                  </div>
-
-                  {sensor.status !== 'offline' ? (
-                    <>
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <span className="text-3xl font-bold text-gray-900">
-                          {sensor.value}
+                  return (
+                    <button
+                      key={s.stationId}
+                      className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                        selectedStation === s.stationId ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                      onClick={() => setSelectedStation(s.stationId)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Radio className="h-4 w-4 text-blue-500" />
+                          <span className="font-medium text-gray-900">{s.stationId}</span>
+                        </div>
+                        <StatusIcon className={`h-4 w-4 ${config.color}`} />
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{s.stationName}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-gray-400">{s.state}</span>
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatTimeAgo(s.timestamp)}
                         </span>
-                        <span className="text-lg text-gray-500">{sensor.unit}</span>
-                        <TrendIcon trend={sensor.trend} />
                       </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
 
-                      <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>Min: {sensor.min24h}</span>
-                        <span>Máx: {sensor.max24h}</span>
+          {/* Indicadores Numéricos */}
+          <div className="col-span-6 flex flex-col gap-4">
+            {station ? (
+              <>
+                {/* Header da estação selecionada */}
+                <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <Radio className={`h-6 w-6 ${statusConfig[getStationStatus(station.status)].color}`} />
                       </div>
-
-                      <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {sensor.lastUpdate}
+                      <div>
+                        <h3 className="font-bold text-lg">{station.stationName}</h3>
+                        <p className="text-sm text-gray-500">{station.stationId} • {station.state}</p>
                       </div>
-                    </>
-                  ) : (
-                    <div className="py-4 text-center text-gray-400">
-                      <XCircle className="h-8 w-8 mx-auto mb-1" />
-                      <p className="text-sm">Sem dados</p>
                     </div>
-                  )}
+                    <div className="flex items-center gap-4">
+                      <div className="text-center">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{formatTimeAgo(station.timestamp)}</span>
+                        </div>
+                        <p className="text-xs text-gray-400">Atualização</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        </div>
 
-        {/* Gráficos Compactos e Status */}
-        <div className="col-span-3 flex flex-col gap-4">
-          {/* Tendência de Precipitação */}
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">Tendência Recente</h3>
-            <p className="text-xs text-gray-500 mb-3">Precipitação - Últimas 2 horas</p>
+                {/* Grid de Sensores */}
+                <div className="flex-1 grid grid-cols-3 gap-3">
+                  {/* Precipitação */}
+                  <div className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Droplets className="h-5 w-5 text-blue-500" />
+                        <span className="text-sm font-medium text-gray-700">Precipitação</span>
+                      </div>
+                      <div className={`p-1 rounded ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <CheckCircle className={`h-3 w-3 ${statusConfig[getStationStatus(station.status)].color}`} />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{station.rain.current}</span>
+                      <span className="text-lg text-gray-500">mm/h</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>1h: {station.rain.last1h}mm</span>
+                      <span>24h: {station.rain.last24h}mm</span>
+                    </div>
+                  </div>
 
-            <MiniChart data={[0.5, 1.2, 2.1, 3.5, 4.8, 5.2, 4.5, 4.2]} />
+                  {/* Temperatura */}
+                  <div className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Thermometer className="h-5 w-5 text-red-500" />
+                        <span className="text-sm font-medium text-gray-700">Temperatura</span>
+                      </div>
+                      <div className={`p-1 rounded ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <CheckCircle className={`h-3 w-3 ${statusConfig[getStationStatus(station.status)].color}`} />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{station.temperature.current}</span>
+                      <span className="text-lg text-gray-500">°C</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>Min: {station.temperature.min}°C</span>
+                      <span>Máx: {station.temperature.max}°C</span>
+                    </div>
+                  </div>
 
-            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-              <span>14:00</span>
-              <span>16:00</span>
-            </div>
+                  {/* Umidade */}
+                  <div className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Droplets className="h-5 w-5 text-cyan-500" />
+                        <span className="text-sm font-medium text-gray-700">Umidade</span>
+                      </div>
+                      <div className={`p-1 rounded ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <CheckCircle className={`h-3 w-3 ${statusConfig[getStationStatus(station.status)].color}`} />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{station.humidity.current}</span>
+                      <span className="text-lg text-gray-500">%</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>Min: {station.humidity.min}%</span>
+                      <span>Máx: {station.humidity.max}%</span>
+                    </div>
+                  </div>
 
-            <div className="mt-3 p-2 bg-orange-50 rounded flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-orange-500" />
-              <span className="text-sm text-orange-700">Tendência de aumento</span>
-            </div>
-          </div>
+                  {/* Vento */}
+                  <div className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Wind className="h-5 w-5 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">Vento</span>
+                      </div>
+                      <div className={`p-1 rounded ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <CheckCircle className={`h-3 w-3 ${statusConfig[getStationStatus(station.status)].color}`} />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{station.wind.speed}</span>
+                      <span className="text-lg text-gray-500">km/h</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>Dir: {station.wind.direction}°</span>
+                      <span>Rajada: {station.wind.gust}km/h</span>
+                    </div>
+                  </div>
 
-          {/* Status dos Sensores */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 flex-1">
-            <h3 className="font-semibold text-gray-900 mb-3">Status dos Sensores</h3>
+                  {/* Pressão */}
+                  <div className="bg-white rounded-lg shadow-sm border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Gauge className="h-5 w-5 text-purple-500" />
+                        <span className="text-sm font-medium text-gray-700">Pressão</span>
+                      </div>
+                      <div className={`p-1 rounded ${statusConfig[getStationStatus(station.status)].bg}`}>
+                        <CheckCircle className={`h-3 w-3 ${statusConfig[getStationStatus(station.status)].color}`} />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-3xl font-bold text-gray-900">{station.pressure}</span>
+                      <span className="text-lg text-gray-500">hPa</span>
+                    </div>
+                  </div>
 
-            <div className="space-y-2">
-              {station.sensors.map((sensor) => {
-                const config = statusConfig[sensor.status]
-                const StatusIcon = config.icon
-
-                return (
-                  <div
-                    key={sensor.id}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                  >
-                    <span className="text-sm text-gray-700">
-                      {sensorLabels[sensor.type]}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${config.color}`}>
-                        {sensor.status === 'online' ? 'OK' :
-                         sensor.status === 'warning' ? 'Alerta' : 'Falha'}
+                  {/* Nível de Alerta */}
+                  <div className={`rounded-lg shadow-sm border p-4 ${
+                    station.alertLevel === 'severe' ? 'bg-red-50 border-red-200' :
+                    station.alertLevel === 'alert' ? 'bg-orange-50 border-orange-200' :
+                    station.alertLevel === 'attention' ? 'bg-yellow-50 border-yellow-200' :
+                    'bg-green-50 border-green-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className={`h-5 w-5 ${
+                          station.alertLevel === 'severe' ? 'text-red-500' :
+                          station.alertLevel === 'alert' ? 'text-orange-500' :
+                          station.alertLevel === 'attention' ? 'text-yellow-500' :
+                          'text-green-500'
+                        }`} />
+                        <span className="text-sm font-medium text-gray-700">Nível de Alerta</span>
+                      </div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className={`text-2xl font-bold ${
+                        station.alertLevel === 'severe' ? 'text-red-700' :
+                        station.alertLevel === 'alert' ? 'text-orange-700' :
+                        station.alertLevel === 'attention' ? 'text-yellow-700' :
+                        'text-green-700'
+                      }`}>
+                        {station.alertLevel === 'severe' ? 'SEVERO' :
+                         station.alertLevel === 'alert' ? 'ALERTA' :
+                         station.alertLevel === 'attention' ? 'ATENÇÃO' : 'NORMAL'}
                       </span>
-                      <StatusIcon className={`h-4 w-4 ${config.color}`} />
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Detecção de Falhas */}
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Detecção de Falhas</h3>
-
-            {offlineCount > 0 || warningCount > 0 ? (
-              <div className="space-y-2">
-                {mockStations.filter(s => s.status !== 'online').map(s => (
-                  <div
-                    key={s.id}
-                    className={`p-2 rounded flex items-center gap-2 ${
-                      s.status === 'offline' ? 'bg-red-50' : 'bg-yellow-50'
-                    }`}
-                  >
-                    {s.status === 'offline' ? (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{s.code}</p>
-                      <p className="text-xs text-gray-500">
-                        {s.status === 'offline' ? 'Sem comunicação' : 'Verificar sensores'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                </div>
+              </>
             ) : (
-              <div className="text-center py-4 text-green-600">
-                <CheckCircle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Todos os sensores operacionais</p>
+              <div className="flex-1 flex items-center justify-center bg-white rounded-lg shadow-sm border">
+                <p className="text-gray-500">Selecione uma estação</p>
               </div>
             )}
           </div>
+
+          {/* Status e Resumo */}
+          <div className="col-span-3 flex flex-col gap-4">
+            {/* Resumo da Capital */}
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Resumo - {capitalInfo.name}</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <span className="text-sm text-gray-700">Total de Estações</span>
+                  <span className="font-bold">{weatherData.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                  <span className="text-sm text-gray-700">Online</span>
+                  <span className="font-bold text-green-600">{onlineCount}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-yellow-50 rounded">
+                  <span className="text-sm text-gray-700">Atrasadas</span>
+                  <span className="font-bold text-yellow-600">{delayedCount}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-red-50 rounded">
+                  <span className="text-sm text-gray-700">Offline</span>
+                  <span className="font-bold text-red-600">{offlineCount}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Médias */}
+            {weatherData.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">Médias da Região</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm text-gray-600">Chuva (1h)</span>
+                    </div>
+                    <span className="font-medium">
+                      {(weatherData.reduce((sum, s) => sum + s.rain.last1h, 0) / weatherData.length).toFixed(1)} mm
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Thermometer className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-gray-600">Temperatura</span>
+                    </div>
+                    <span className="font-medium">
+                      {(weatherData.reduce((sum, s) => sum + s.temperature.current, 0) / weatherData.length).toFixed(1)}°C
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="h-4 w-4 text-cyan-500" />
+                      <span className="text-sm text-gray-600">Umidade</span>
+                    </div>
+                    <span className="font-medium">
+                      {Math.round(weatherData.reduce((sum, s) => sum + s.humidity.current, 0) / weatherData.length)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Alertas */}
+            <div className="bg-white rounded-lg shadow-sm border p-4 flex-1">
+              <h3 className="font-semibold text-gray-900 mb-3">Estações em Alerta</h3>
+              <div className="space-y-2">
+                {weatherData.filter(s => s.alertLevel !== 'normal').length === 0 ? (
+                  <div className="text-center py-4 text-green-600">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">Todas as estações normais</p>
+                  </div>
+                ) : (
+                  weatherData.filter(s => s.alertLevel !== 'normal').map(s => (
+                    <div
+                      key={s.stationId}
+                      className={`p-2 rounded flex items-center gap-2 ${
+                        s.alertLevel === 'severe' ? 'bg-red-50' :
+                        s.alertLevel === 'alert' ? 'bg-orange-50' : 'bg-yellow-50'
+                      }`}
+                    >
+                      <AlertTriangle className={`h-4 w-4 ${
+                        s.alertLevel === 'severe' ? 'text-red-500' :
+                        s.alertLevel === 'alert' ? 'text-orange-500' : 'text-yellow-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{s.stationId}</p>
+                        <p className="text-xs text-gray-500">{s.rain.last1h}mm/1h</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

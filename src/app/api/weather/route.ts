@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MONITORED_STATIONS, type WeatherData } from '@/types/weather'
+import { STATION_INFO, BRAZILIAN_CAPITALS, type WeatherData, type CapitalSlug } from '@/types/weather'
 
 const INMET_API_BASE = 'https://apitempo.inmet.gov.br'
 
@@ -70,7 +70,7 @@ async function fetchStationData(stationCode: string): Promise<any[]> {
 function processStationData(rawData: any[], stationCode: string): WeatherData | null {
   if (!rawData || rawData.length === 0) return null
 
-  const stationInfo = MONITORED_STATIONS[stationCode as keyof typeof MONITORED_STATIONS]
+  const stationInfo = STATION_INFO[stationCode]
   if (!stationInfo) return null
 
   // Ordenar por data/hora (mais recente primeiro)
@@ -172,6 +172,7 @@ function processStationData(rawData: any[], stationCode: string): WeatherData | 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const stationCode = searchParams.get('station')
+  const capitalSlug = searchParams.get('capital') as CapitalSlug | null
 
   try {
     if (stationCode) {
@@ -193,8 +194,20 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Buscar todas as estações monitoradas
-    const stationCodes = Object.keys(MONITORED_STATIONS)
+    // Determinar quais estações buscar
+    let stationCodes: string[]
+    let capitalInfo = null
+
+    if (capitalSlug && BRAZILIAN_CAPITALS[capitalSlug]) {
+      // Buscar estações de uma capital específica
+      capitalInfo = BRAZILIAN_CAPITALS[capitalSlug]
+      stationCodes = capitalInfo.stations
+    } else {
+      // Default: São Paulo
+      capitalInfo = BRAZILIAN_CAPITALS['sao-paulo']
+      stationCodes = capitalInfo.stations
+    }
+
     const results: WeatherData[] = []
 
     // Buscar em paralelo (com limite)
@@ -218,6 +231,12 @@ export async function GET(request: NextRequest) {
       success: true,
       data: results,
       total: results.length,
+      capital: capitalInfo ? {
+        name: capitalInfo.name,
+        state: capitalInfo.state,
+        stateCode: capitalInfo.stateCode,
+        region: capitalInfo.region
+      } : null,
       timestamp: new Date().toISOString()
     })
   } catch (error) {

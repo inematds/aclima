@@ -10,99 +10,14 @@ import {
   Droplets,
   Shield,
   ChevronRight,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react'
+import CapitalSelector from '@/components/CapitalSelector'
+import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
+import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
 type AlertLevel = 'attention' | 'alert' | 'severe'
-type AlertType = 'flood' | 'overflow' | 'landslide' | 'rain'
-
-interface Alert {
-  id: string
-  region: string
-  subregion: string
-  level: AlertLevel
-  type: AlertType
-  message: string
-  startTime: string
-  duration: string
-  rain1h: number
-  rain24h: number
-  source: string
-  coordinates: { lat: number; lng: number }
-}
-
-const mockAlerts: Alert[] = [
-  {
-    id: '1',
-    region: 'Centro',
-    subregion: 'Praça da Sé',
-    level: 'severe',
-    type: 'flood',
-    message: 'Alagamento confirmado. Água atingindo 30cm em vias principais.',
-    startTime: '14:25',
-    duration: '1h 05min',
-    rain1h: 35.2,
-    rain24h: 58.4,
-    source: 'Defesa Civil',
-    coordinates: { lat: -23.550, lng: -46.634 }
-  },
-  {
-    id: '2',
-    region: 'Zona Sul',
-    subregion: 'Jardim Ângela',
-    level: 'severe',
-    type: 'landslide',
-    message: 'Risco de deslizamento em área de encosta. Evacuação recomendada.',
-    startTime: '14:10',
-    duration: '1h 20min',
-    rain1h: 42.1,
-    rain24h: 72.3,
-    source: 'CGE',
-    coordinates: { lat: -23.683, lng: -46.753 }
-  },
-  {
-    id: '3',
-    region: 'Zona Norte',
-    subregion: 'Casa Verde',
-    level: 'alert',
-    type: 'overflow',
-    message: 'Nível do córrego Carandiru em elevação. Monitoramento ativo.',
-    startTime: '14:45',
-    duration: '45min',
-    rain1h: 28.5,
-    rain24h: 45.2,
-    source: 'SAISP',
-    coordinates: { lat: -23.518, lng: -46.657 }
-  },
-  {
-    id: '4',
-    region: 'Zona Leste',
-    subregion: 'São Miguel',
-    level: 'alert',
-    type: 'rain',
-    message: 'Chuva intensa na região. Possíveis pontos de alagamento.',
-    startTime: '15:00',
-    duration: '30min',
-    rain1h: 25.8,
-    rain24h: 38.9,
-    source: 'INMET',
-    coordinates: { lat: -23.498, lng: -46.448 }
-  },
-  {
-    id: '5',
-    region: 'Zona Oeste',
-    subregion: 'Rio Pequeno',
-    level: 'attention',
-    type: 'rain',
-    message: 'Chuva moderada persistente. Acompanhar evolução.',
-    startTime: '15:10',
-    duration: '20min',
-    rain1h: 12.4,
-    rain24h: 28.7,
-    source: 'CEMADEN',
-    coordinates: { lat: -23.557, lng: -46.749 }
-  },
-]
 
 const alertLevelConfig: Record<AlertLevel, {
   icon: typeof AlertTriangle
@@ -134,297 +49,368 @@ const alertLevelConfig: Record<AlertLevel, {
   },
 }
 
-const alertTypeLabels: Record<AlertType, string> = {
-  flood: 'Alagamento',
-  overflow: 'Transbordamento',
-  landslide: 'Deslizamento',
-  rain: 'Chuva Intensa',
-}
-
 export default function Painel2Page() {
-  const [selectedAlert, setSelectedAlert] = useState<string | null>(mockAlerts[0].id)
-  const selected = mockAlerts.find(a => a.id === selectedAlert)
+  const [selectedStation, setSelectedStation] = useState<string | null>(null)
+  const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
 
-  const severeCount = mockAlerts.filter(a => a.level === 'severe').length
-  const alertCount = mockAlerts.filter(a => a.level === 'alert').length
-  const attentionCount = mockAlerts.filter(a => a.level === 'attention').length
+  const {
+    data: weatherData,
+    loading: weatherLoading,
+    error: weatherError,
+    refetch: refetchWeather
+  } = useWeather({ refreshInterval: 5 * 60 * 1000, capital: selectedCapital })
+
+  const capitalInfo = BRAZILIAN_CAPITALS[selectedCapital]
+
+  // Filtrar estações com alertas
+  const stationsWithAlerts = weatherData.filter(w => w.alertLevel !== 'normal')
+  const severeCount = stationsWithAlerts.filter(s => s.alertLevel === 'severe').length
+  const alertCount = stationsWithAlerts.filter(s => s.alertLevel === 'alert').length
+  const attentionCount = stationsWithAlerts.filter(s => s.alertLevel === 'attention').length
+
+  const selectedWeather = selectedStation
+    ? weatherData.find(w => w.stationId === selectedStation)
+    : stationsWithAlerts[0] || weatherData[0]
+
+  const getAlertLevel = (level: string): AlertLevel => {
+    if (level === 'severe') return 'severe'
+    if (level === 'alert') return 'alert'
+    return 'attention'
+  }
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Painel 2: Alertas Hidrológicos e Risco
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl font-bold text-gray-900">
+              Painel 2: Alertas Hidrológicos
+            </h1>
+            <CapitalSelector
+              selectedCapital={selectedCapital}
+              onSelect={setSelectedCapital}
+            />
+          </div>
           <p className="text-sm text-gray-500">
-            Monitoramento em tempo real do estado hidrológico e níveis de risco
+            Monitoramento em tempo real do estado hidrológico - {capitalInfo.name}, {capitalInfo.stateCode}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-red-500 animate-pulse" />
+          {stationsWithAlerts.length > 0 && (
+            <Bell className="h-5 w-5 text-red-500 animate-pulse" />
+          )}
           <span className="text-sm font-medium text-gray-700">
-            {mockAlerts.length} alertas ativos
+            {stationsWithAlerts.length} alertas ativos
           </span>
         </div>
       </div>
 
-      {/* Indicadores Agregados */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <XCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-red-600 font-medium">Severos</p>
-                <p className="text-4xl font-bold text-red-700">{severeCount}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-red-500">Ação imediata</p>
-              <p className="text-xs text-red-500">necessária</p>
-            </div>
+      {weatherLoading && weatherData.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-2" />
+            <p className="text-gray-500">Carregando dados de {capitalInfo.name}...</p>
           </div>
         </div>
-
-        <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <AlertTriangle className="h-8 w-8 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-orange-600 font-medium">Alertas</p>
-                <p className="text-4xl font-bold text-orange-700">{alertCount}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-orange-500">Monitoramento</p>
-              <p className="text-xs text-orange-500">intensivo</p>
-            </div>
+      ) : weatherError && weatherData.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+            <p className="text-red-700 font-medium">Erro ao carregar dados</p>
+            <button
+              onClick={() => refetchWeather()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Tentar novamente
+            </button>
           </div>
         </div>
-
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <AlertCircle className="h-8 w-8 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-sm text-yellow-600 font-medium">Atenção</p>
-                <p className="text-4xl font-bold text-yellow-700">{attentionCount}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-yellow-500">Acompanhar</p>
-              <p className="text-xs text-yellow-500">evolução</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Layout principal - Mapa + Lista + Detalhes */}
-      <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-        {/* Mapa de Status */}
-        <div className="col-span-5 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
-          <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Mapa de Status</h2>
-            <div className="flex gap-2">
-              {(['severe', 'alert', 'attention'] as AlertLevel[]).map(level => (
-                <div key={level} className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${
-                    level === 'severe' ? 'bg-red-500' :
-                    level === 'alert' ? 'bg-orange-500' : 'bg-yellow-500'
-                  }`} />
-                  <span className="text-xs text-gray-500">
-                    {mockAlerts.filter(a => a.level === level).length}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Mapa Placeholder com pontos */}
-          <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 relative p-4">
-            {mockAlerts.map((alert, i) => {
-              const config = alertLevelConfig[alert.level]
-              const positions = [
-                { top: '20%', left: '45%' },
-                { top: '70%', left: '30%' },
-                { top: '35%', left: '60%' },
-                { top: '55%', left: '75%' },
-                { top: '45%', left: '25%' },
-              ]
-              const pos = positions[i] || { top: '50%', left: '50%' }
-
-              return (
-                <button
-                  key={alert.id}
-                  className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${
-                    selectedAlert === alert.id ? 'z-10 scale-125' : ''
-                  } transition-transform`}
-                  style={{ top: pos.top, left: pos.left }}
-                  onClick={() => setSelectedAlert(alert.id)}
-                >
-                  <div className={`p-2 rounded-full ${config.bg} border-2 ${config.border} shadow-lg`}>
-                    <config.icon className={`h-5 w-5 ${config.color}`} />
+      ) : (
+        <>
+          {/* Indicadores Agregados */}
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <XCircle className="h-8 w-8 text-red-600" />
                   </div>
-                  {alert.level === 'severe' && (
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+                  <div>
+                    <p className="text-sm text-red-600 font-medium">Severos</p>
+                    <p className="text-4xl font-bold text-red-700">{severeCount}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-red-500">Ação imediata</p>
+                  <p className="text-xs text-red-500">necessária</p>
+                </div>
+              </div>
+            </div>
 
-            <div className="absolute bottom-4 left-4 bg-white/90 rounded-lg p-2 text-xs text-gray-500">
-              <p>Clique nos pontos para detalhes</p>
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-orange-100 rounded-lg">
+                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-orange-600 font-medium">Alertas</p>
+                    <p className="text-4xl font-bold text-orange-700">{alertCount}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-orange-500">Monitoramento</p>
+                  <p className="text-xs text-orange-500">intensivo</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-yellow-100 rounded-lg">
+                    <AlertCircle className="h-8 w-8 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-yellow-600 font-medium">Atenção</p>
+                    <p className="text-4xl font-bold text-yellow-700">{attentionCount}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-yellow-500">Acompanhar</p>
+                  <p className="text-xs text-yellow-500">evolução</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Lista de Alertas */}
-        <div className="col-span-3 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
-          <div className="p-3 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Lista de Alertas</h2>
-          </div>
+          {/* Layout principal - Mapa + Lista + Detalhes */}
+          <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+            {/* Mapa de Status */}
+            <div className="col-span-5 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
+              <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900">Mapa - {capitalInfo.name}</h2>
+                <div className="flex gap-2">
+                  {(['severe', 'alert', 'attention'] as AlertLevel[]).map(level => (
+                    <div key={level} className="flex items-center gap-1">
+                      <div className={`w-3 h-3 rounded-full ${
+                        level === 'severe' ? 'bg-red-500' :
+                        level === 'alert' ? 'bg-orange-500' : 'bg-yellow-500'
+                      }`} />
+                      <span className="text-xs text-gray-500">
+                        {stationsWithAlerts.filter(s => s.alertLevel === level).length}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          <div className="flex-1 overflow-auto">
-            {mockAlerts.map((alert) => {
-              const config = alertLevelConfig[alert.level]
-              const Icon = config.icon
+              {/* Mapa Placeholder com pontos */}
+              <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 relative p-4">
+                {weatherData.map((station, i) => {
+                  if (station.alertLevel === 'normal') return null
+                  const level = getAlertLevel(station.alertLevel)
+                  const config = alertLevelConfig[level]
+                  const positions = [
+                    { top: '20%', left: '45%' },
+                    { top: '70%', left: '30%' },
+                    { top: '35%', left: '60%' },
+                    { top: '55%', left: '75%' },
+                    { top: '45%', left: '25%' },
+                  ]
+                  const pos = positions[i % positions.length]
 
-              return (
-                <button
-                  key={alert.id}
-                  className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    selectedAlert === alert.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedAlert(alert.id)}
-                >
-                  <div className="flex items-start gap-2">
-                    <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${config.color}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${config.bg} ${config.color}`}>
-                          {config.label}
-                        </span>
-                        <span className="text-xs text-gray-400">{alert.startTime}</span>
+                  return (
+                    <button
+                      key={station.stationId}
+                      className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${
+                        selectedStation === station.stationId ? 'z-10 scale-125' : ''
+                      } transition-transform`}
+                      style={{ top: pos.top, left: pos.left }}
+                      onClick={() => setSelectedStation(station.stationId)}
+                    >
+                      <div className={`p-2 rounded-full ${config.bg} border-2 ${config.border} shadow-lg`}>
+                        <config.icon className={`h-5 w-5 ${config.color}`} />
                       </div>
-                      <p className="font-medium text-gray-900 text-sm mt-1 truncate">
-                        {alert.region}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {alertTypeLabels[alert.type]}
+                      {station.alertLevel === 'severe' && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+
+                {stationsWithAlerts.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <Shield className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                      <p className="text-sm font-medium text-green-600">Sem alertas ativos</p>
+                      <p className="text-xs">Todas as estações estão normais</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="absolute bottom-4 left-4 bg-white/90 rounded-lg p-2 text-xs text-gray-500">
+                  <p>Clique nos pontos para detalhes</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista de Alertas */}
+            <div className="col-span-3 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
+              <div className="p-3 border-b bg-gray-50">
+                <h2 className="font-semibold text-gray-900">Estações em Alerta</h2>
+              </div>
+
+              <div className="flex-1 overflow-auto">
+                {stationsWithAlerts.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <Shield className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                    <p className="text-sm">Nenhum alerta ativo</p>
+                  </div>
+                ) : (
+                  stationsWithAlerts.map((station) => {
+                    const level = getAlertLevel(station.alertLevel)
+                    const config = alertLevelConfig[level]
+                    const Icon = config.icon
+
+                    return (
+                      <button
+                        key={station.stationId}
+                        className={`w-full text-left p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          selectedStation === station.stationId ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                        }`}
+                        onClick={() => setSelectedStation(station.stationId)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${config.color}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${config.bg} ${config.color}`}>
+                                {config.label}
+                              </span>
+                              <span className="text-xs text-gray-400">{formatTimeAgo(station.timestamp)}</span>
+                            </div>
+                            <p className="font-medium text-gray-900 text-sm mt-1 truncate">
+                              {station.stationName}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {station.rain.last1h}mm/1h | {station.rain.last24h}mm/24h
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Painel de Detalhes */}
+            <div className="col-span-4 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
+              <div className="p-3 border-b bg-gray-50">
+                <h2 className="font-semibold text-gray-900">Detalhes da Estação</h2>
+              </div>
+
+              {selectedWeather ? (
+                <div className="flex-1 p-4 overflow-auto">
+                  {/* Cabeçalho */}
+                  {selectedWeather.alertLevel !== 'normal' && (
+                    <div className={`${alertLevelConfig[getAlertLevel(selectedWeather.alertLevel)].bg} ${alertLevelConfig[getAlertLevel(selectedWeather.alertLevel)].border} border rounded-lg p-4 mb-4`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {(() => {
+                          const level = getAlertLevel(selectedWeather.alertLevel)
+                          const Icon = alertLevelConfig[level].icon
+                          return <Icon className={`h-6 w-6 ${alertLevelConfig[level].color}`} />
+                        })()}
+                        <span className={`font-bold ${alertLevelConfig[getAlertLevel(selectedWeather.alertLevel)].color}`}>
+                          {alertLevelConfig[getAlertLevel(selectedWeather.alertLevel)].label}
+                        </span>
+                      </div>
+                      <p className="text-gray-700">
+                        Precipitação elevada detectada. Monitoramento ativo.
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                  )}
+
+                  {/* Estação */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Estação</h4>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium">{selectedWeather.stationName}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 ml-6">{selectedWeather.stationId} - {selectedWeather.state}</p>
                   </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
-        {/* Painel de Detalhes */}
-        <div className="col-span-4 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
-          <div className="p-3 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Detalhes do Alerta</h2>
-          </div>
-
-          {selected ? (
-            <div className="flex-1 p-4 overflow-auto">
-              {/* Cabeçalho do alerta */}
-              <div className={`${alertLevelConfig[selected.level].bg} ${alertLevelConfig[selected.level].border} border rounded-lg p-4 mb-4`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {(() => {
-                    const Icon = alertLevelConfig[selected.level].icon
-                    return <Icon className={`h-6 w-6 ${alertLevelConfig[selected.level].color}`} />
-                  })()}
-                  <span className={`font-bold ${alertLevelConfig[selected.level].color}`}>
-                    {alertLevelConfig[selected.level].label}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    • {alertTypeLabels[selected.type]}
-                  </span>
-                </div>
-                <p className="text-gray-700">{selected.message}</p>
-              </div>
-
-              {/* Região */}
-              <div className="mb-4">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Região Afetada</h4>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium">{selected.region}</span>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-gray-600">{selected.subregion}</span>
-                </div>
-              </div>
-
-              {/* Tempo */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Início</h4>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">{selected.startTime}</span>
+                  {/* Tempo */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Última Atualização</h4>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium">{formatTimeAgo(selectedWeather.timestamp)}</span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Duração</h4>
-                  <span className="font-medium">{selected.duration}</span>
-                </div>
-              </div>
 
-              {/* Precipitação */}
-              <div className="mb-4">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Precipitação</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <Droplets className="h-5 w-5 text-blue-500 mx-auto mb-1" />
-                    <div className="text-xl font-bold">{selected.rain1h}</div>
-                    <div className="text-xs text-gray-500">mm/1h</div>
+                  {/* Precipitação */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Precipitação</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <Droplets className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                        <div className="text-xl font-bold">{selectedWeather.rain.current}</div>
+                        <div className="text-xs text-gray-500">mm/h</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <Droplets className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+                        <div className="text-xl font-bold">{selectedWeather.rain.last1h}</div>
+                        <div className="text-xs text-gray-500">mm/1h</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <Droplets className="h-5 w-5 text-blue-700 mx-auto mb-1" />
+                        <div className="text-xl font-bold">{selectedWeather.rain.last24h}</div>
+                        <div className="text-xs text-gray-500">mm/24h</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <Droplets className="h-5 w-5 text-blue-700 mx-auto mb-1" />
-                    <div className="text-xl font-bold">{selected.rain24h}</div>
-                    <div className="text-xs text-gray-500">mm/24h</div>
+
+                  {/* Condições */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Condições</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-500">Temperatura</div>
+                        <div className="text-lg font-bold">{selectedWeather.temperature.current}°C</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="text-xs text-gray-500">Umidade</div>
+                        <div className="text-lg font-bold">{selectedWeather.humidity.current}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fonte */}
+                  <div className="mb-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Fonte do Dado</h4>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-400" />
+                      <span className="text-gray-700">INMET - Instituto Nacional de Meteorologia</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Fonte */}
-              <div className="mb-4">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Fonte do Dado</h4>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-700">{selected.source}</span>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-400">
+                  <p>Selecione uma estação para ver detalhes</p>
                 </div>
-              </div>
-
-              {/* Ações */}
-              <div className="flex gap-2 mt-4 pt-4 border-t">
-                <button className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                  Ver no Mapa
-                </button>
-                <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
-                  Histórico
-                </button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
-              <p>Selecione um alerta para ver detalhes</p>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

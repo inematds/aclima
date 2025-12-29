@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { WeatherData, AlertData } from '@/types/weather'
+import type { WeatherData, AlertData, CapitalSlug } from '@/types/weather'
 
 interface UseWeatherOptions {
   refreshInterval?: number // em milissegundos
   station?: string // código da estação específica
+  capital?: CapitalSlug // slug da capital
 }
 
 interface WeatherState {
@@ -29,7 +30,7 @@ interface AlertsState {
 
 // Hook para dados meteorológicos
 export function useWeather(options: UseWeatherOptions = {}) {
-  const { refreshInterval = 5 * 60 * 1000, station } = options // 5 min padrão
+  const { refreshInterval = 5 * 60 * 1000, station, capital = 'sao-paulo' } = options // 5 min padrão
 
   const [state, setState] = useState<WeatherState>({
     data: [],
@@ -40,7 +41,13 @@ export function useWeather(options: UseWeatherOptions = {}) {
 
   const fetchWeather = useCallback(async () => {
     try {
-      const url = station ? `/api/weather?station=${station}` : '/api/weather'
+      let url = '/api/weather'
+      if (station) {
+        url = `/api/weather?station=${station}`
+      } else if (capital) {
+        url = `/api/weather?capital=${capital}`
+      }
+
       const response = await fetch(url)
 
       if (!response.ok) {
@@ -66,7 +73,7 @@ export function useWeather(options: UseWeatherOptions = {}) {
         error: error instanceof Error ? error.message : 'Unknown error'
       }))
     }
-  }, [station])
+  }, [station, capital])
 
   // Buscar dados iniciais
   useEffect(() => {

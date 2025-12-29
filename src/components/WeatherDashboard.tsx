@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
+import CapitalSelector from './CapitalSelector'
 import {
   Droplets,
   Thermometer,
@@ -13,6 +15,8 @@ import {
   Minus,
   Loader2
 } from 'lucide-react'
+import type { CapitalSlug } from '@/types/weather'
+import { BRAZILIAN_CAPITALS } from '@/types/weather'
 
 const alertColors = {
   normal: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' },
@@ -28,13 +32,15 @@ const statusColors = {
 }
 
 export default function WeatherDashboard() {
+  const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
+
   const {
     data: weatherData,
     loading: weatherLoading,
     error: weatherError,
     lastUpdate,
     refetch: refetchWeather
-  } = useWeather({ refreshInterval: 5 * 60 * 1000 }) // 5 minutos
+  } = useWeather({ refreshInterval: 5 * 60 * 1000, capital: selectedCapital }) // 5 minutos
 
   const {
     data: alertsData,
@@ -47,6 +53,8 @@ export default function WeatherDashboard() {
     refetchWeather()
     refetchAlerts()
   }
+
+  const capitalInfo = BRAZILIAN_CAPITALS[selectedCapital]
 
   // Calcular estatísticas gerais
   const stats = {
@@ -94,11 +102,17 @@ export default function WeatherDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Situação Meteorológica Atual
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Situação Meteorológica
+            </h1>
+            <CapitalSelector
+              selectedCapital={selectedCapital}
+              onSelect={setSelectedCapital}
+            />
+          </div>
           <p className="text-gray-500 flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Última atualização: {lastUpdate ? formatTimeAgo(lastUpdate) : 'N/A'}

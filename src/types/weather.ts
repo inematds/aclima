@@ -117,22 +117,89 @@ export interface AlertData {
   rain24h?: number
 }
 
-// Estações para monitoramento
-export const MONITORED_STATIONS = {
-  // São Paulo Capital e Região Metropolitana
-  'A701': { name: 'São Paulo - Mirante de Santana', city: 'São Paulo', zone: 'Centro' },
-  'A713': { name: 'São Paulo - Interlagos', city: 'São Paulo', zone: 'Zona Sul' },
-  'A728': { name: 'Santo André', city: 'Santo André', zone: 'ABC' },
-  'A736': { name: 'Guarulhos', city: 'Guarulhos', zone: 'Norte' },
-  'A755': { name: 'Osasco', city: 'Osasco', zone: 'Oeste' },
-
-  // Interior de SP (exemplos)
-  'A711': { name: 'Campinas', city: 'Campinas', zone: 'Interior' },
-  'A714': { name: 'Santos', city: 'Santos', zone: 'Litoral' },
-
-  // Rio de Janeiro
-  'A652': { name: 'Rio de Janeiro - Forte de Copacabana', city: 'Rio de Janeiro', zone: 'Zona Sul' },
-  'A621': { name: 'Rio de Janeiro - Vila Militar', city: 'Rio de Janeiro', zone: 'Zona Oeste' },
+// Capitais brasileiras com suas estações INMET
+export interface CapitalInfo {
+  name: string
+  state: string
+  stateCode: string
+  region: string
+  stations: string[] // Códigos das estações INMET na capital
 }
 
-export type StationCode = keyof typeof MONITORED_STATIONS
+export const BRAZILIAN_CAPITALS: Record<string, CapitalInfo> = {
+  'rio-branco': { name: 'Rio Branco', state: 'Acre', stateCode: 'AC', region: 'Norte', stations: ['A104'] },
+  'maceio': { name: 'Maceió', state: 'Alagoas', stateCode: 'AL', region: 'Nordeste', stations: ['A303'] },
+  'macapa': { name: 'Macapá', state: 'Amapá', stateCode: 'AP', region: 'Norte', stations: ['A202'] },
+  'manaus': { name: 'Manaus', state: 'Amazonas', stateCode: 'AM', region: 'Norte', stations: ['A101'] },
+  'salvador': { name: 'Salvador', state: 'Bahia', stateCode: 'BA', region: 'Nordeste', stations: ['A401'] },
+  'fortaleza': { name: 'Fortaleza', state: 'Ceará', stateCode: 'CE', region: 'Nordeste', stations: ['A305'] },
+  'brasilia': { name: 'Brasília', state: 'Distrito Federal', stateCode: 'DF', region: 'Centro-Oeste', stations: ['A001'] },
+  'vitoria': { name: 'Vitória', state: 'Espírito Santo', stateCode: 'ES', region: 'Sudeste', stations: ['A612'] },
+  'goiania': { name: 'Goiânia', state: 'Goiás', stateCode: 'GO', region: 'Centro-Oeste', stations: ['A002'] },
+  'sao-luis': { name: 'São Luís', state: 'Maranhão', stateCode: 'MA', region: 'Nordeste', stations: ['A203'] },
+  'cuiaba': { name: 'Cuiabá', state: 'Mato Grosso', stateCode: 'MT', region: 'Centro-Oeste', stations: ['A901'] },
+  'campo-grande': { name: 'Campo Grande', state: 'Mato Grosso do Sul', stateCode: 'MS', region: 'Centro-Oeste', stations: ['A702'] },
+  'belo-horizonte': { name: 'Belo Horizonte', state: 'Minas Gerais', stateCode: 'MG', region: 'Sudeste', stations: ['A521'] },
+  'belem': { name: 'Belém', state: 'Pará', stateCode: 'PA', region: 'Norte', stations: ['A201'] },
+  'joao-pessoa': { name: 'João Pessoa', state: 'Paraíba', stateCode: 'PB', region: 'Nordeste', stations: ['A320'] },
+  'curitiba': { name: 'Curitiba', state: 'Paraná', stateCode: 'PR', region: 'Sul', stations: ['A807'] },
+  'recife': { name: 'Recife', state: 'Pernambuco', stateCode: 'PE', region: 'Nordeste', stations: ['A301'] },
+  'teresina': { name: 'Teresina', state: 'Piauí', stateCode: 'PI', region: 'Nordeste', stations: ['A312'] },
+  'rio-de-janeiro': { name: 'Rio de Janeiro', state: 'Rio de Janeiro', stateCode: 'RJ', region: 'Sudeste', stations: ['A652', 'A621'] },
+  'natal': { name: 'Natal', state: 'Rio Grande do Norte', stateCode: 'RN', region: 'Nordeste', stations: ['A304'] },
+  'porto-alegre': { name: 'Porto Alegre', state: 'Rio Grande do Sul', stateCode: 'RS', region: 'Sul', stations: ['A801'] },
+  'porto-velho': { name: 'Porto Velho', state: 'Rondônia', stateCode: 'RO', region: 'Norte', stations: ['A103'] },
+  'boa-vista': { name: 'Boa Vista', state: 'Roraima', stateCode: 'RR', region: 'Norte', stations: ['A135'] },
+  'florianopolis': { name: 'Florianópolis', state: 'Santa Catarina', stateCode: 'SC', region: 'Sul', stations: ['A806'] },
+  'sao-paulo': { name: 'São Paulo', state: 'São Paulo', stateCode: 'SP', region: 'Sudeste', stations: ['A701', 'A713'] },
+  'aracaju': { name: 'Aracaju', state: 'Sergipe', stateCode: 'SE', region: 'Nordeste', stations: ['A409'] },
+  'palmas': { name: 'Palmas', state: 'Tocantins', stateCode: 'TO', region: 'Norte', stations: ['A009'] },
+}
+
+// Mapeamento de código de estação para informações
+export const STATION_INFO: Record<string, { name: string; city: string; state: string }> = {
+  // Norte
+  'A104': { name: 'Rio Branco', city: 'Rio Branco', state: 'AC' },
+  'A101': { name: 'Manaus', city: 'Manaus', state: 'AM' },
+  'A202': { name: 'Macapá', city: 'Macapá', state: 'AP' },
+  'A201': { name: 'Belém', city: 'Belém', state: 'PA' },
+  'A103': { name: 'Porto Velho', city: 'Porto Velho', state: 'RO' },
+  'A135': { name: 'Boa Vista', city: 'Boa Vista', state: 'RR' },
+  'A009': { name: 'Palmas', city: 'Palmas', state: 'TO' },
+
+  // Nordeste
+  'A303': { name: 'Maceió', city: 'Maceió', state: 'AL' },
+  'A401': { name: 'Salvador', city: 'Salvador', state: 'BA' },
+  'A305': { name: 'Fortaleza', city: 'Fortaleza', state: 'CE' },
+  'A203': { name: 'São Luís', city: 'São Luís', state: 'MA' },
+  'A320': { name: 'João Pessoa', city: 'João Pessoa', state: 'PB' },
+  'A301': { name: 'Recife', city: 'Recife', state: 'PE' },
+  'A312': { name: 'Teresina', city: 'Teresina', state: 'PI' },
+  'A304': { name: 'Natal', city: 'Natal', state: 'RN' },
+  'A409': { name: 'Aracaju', city: 'Aracaju', state: 'SE' },
+
+  // Centro-Oeste
+  'A001': { name: 'Brasília', city: 'Brasília', state: 'DF' },
+  'A002': { name: 'Goiânia', city: 'Goiânia', state: 'GO' },
+  'A901': { name: 'Cuiabá', city: 'Cuiabá', state: 'MT' },
+  'A702': { name: 'Campo Grande', city: 'Campo Grande', state: 'MS' },
+
+  // Sudeste
+  'A612': { name: 'Vitória', city: 'Vitória', state: 'ES' },
+  'A521': { name: 'Belo Horizonte - Pampulha', city: 'Belo Horizonte', state: 'MG' },
+  'A652': { name: 'Rio de Janeiro - Forte de Copacabana', city: 'Rio de Janeiro', state: 'RJ' },
+  'A621': { name: 'Rio de Janeiro - Vila Militar', city: 'Rio de Janeiro', state: 'RJ' },
+  'A701': { name: 'São Paulo - Mirante de Santana', city: 'São Paulo', state: 'SP' },
+  'A713': { name: 'São Paulo - Interlagos', city: 'São Paulo', state: 'SP' },
+
+  // Sul
+  'A807': { name: 'Curitiba', city: 'Curitiba', state: 'PR' },
+  'A801': { name: 'Porto Alegre', city: 'Porto Alegre', state: 'RS' },
+  'A806': { name: 'Florianópolis', city: 'Florianópolis', state: 'SC' },
+}
+
+// Estações para monitoramento (mantido para compatibilidade)
+export const MONITORED_STATIONS = STATION_INFO
+
+export type StationCode = keyof typeof STATION_INFO
+export type CapitalSlug = keyof typeof BRAZILIAN_CAPITALS
