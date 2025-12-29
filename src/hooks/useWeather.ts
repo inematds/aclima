@@ -190,6 +190,67 @@ export function useStations() {
   return { data, loading, error }
 }
 
+// Hook para dados meteorológicos de estado (múltiplas estações)
+export function useStateWeather(options: { state: StateCode; refreshInterval?: number }) {
+  const { state: stateCode, refreshInterval = 5 * 60 * 1000 } = options
+
+  const [state, setState] = useState<WeatherState>({
+    data: [],
+    loading: true,
+    error: null,
+    lastUpdate: null
+  })
+
+  const fetchWeather = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true }))
+
+    try {
+      const response = await fetch(`/api/weather-state?state=${stateCode}`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        setState({
+          data: Array.isArray(result.data) ? result.data : [result.data],
+          loading: false,
+          error: null,
+          lastUpdate: new Date()
+        })
+      } else {
+        throw new Error(result.error || 'Failed to fetch weather data')
+      }
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }))
+    }
+  }, [stateCode])
+
+  // Buscar dados iniciais
+  useEffect(() => {
+    fetchWeather()
+  }, [fetchWeather])
+
+  // Atualização automática
+  useEffect(() => {
+    if (refreshInterval <= 0) return
+
+    const interval = setInterval(fetchWeather, refreshInterval)
+    return () => clearInterval(interval)
+  }, [fetchWeather, refreshInterval])
+
+  return {
+    ...state,
+    refetch: fetchWeather
+  }
+}
+
 // Utilitário para formatar tempo relativo
 export function formatTimeAgo(date: Date | string | null): string {
   if (!date) return 'N/A'
