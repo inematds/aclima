@@ -43,27 +43,6 @@ const menuItems = [
   },
 ]
 
-const capitalItems = [
-  {
-    name: 'Painel 1',
-    href: '/painel1',
-    icon: LayoutDashboard,
-    description: 'Situação Meteorológica'
-  },
-  {
-    name: 'Painel 2',
-    href: '/painel2',
-    icon: LayoutDashboard,
-    description: 'Alertas Hidrológicos'
-  },
-  {
-    name: 'Painel 3',
-    href: '/painel3',
-    icon: LayoutDashboard,
-    description: 'Estação Climática'
-  },
-]
-
 const estadoItems = [
   {
     name: 'Painel 1',
@@ -135,43 +114,6 @@ export default function Sidebar() {
                     flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
                     ${isActive
                       ? 'bg-blue-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }
-                  `}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <item.icon size={20} />
-                  {!collapsed && (
-                    <div>
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-xs text-slate-400">{item.description}</div>
-                    </div>
-                  )}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-
-        {/* Seção Capitais */}
-        {!collapsed && (
-          <div className="mt-4 pt-4 border-t border-slate-700">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Capitais
-            </p>
-          </div>
-        )}
-        <ul className="space-y-1 px-2">
-          {capitalItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
-                    ${isActive
-                      ? 'bg-emerald-600 text-white'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }
                   `}

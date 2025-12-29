@@ -11,7 +11,8 @@ import {
   Shield,
   ChevronRight,
   Bell,
-  Loader2
+  Loader2,
+  Building2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
@@ -63,6 +64,17 @@ export default function EstadoPainel2Page() {
 
   const stateInfo = BRAZILIAN_STATES[selectedState]
 
+  // Encontrar estação da capital
+  const capitalStation = weatherData.find(w =>
+    w.stationName.toLowerCase().includes(stateInfo?.capital?.toLowerCase() || '')
+  )
+
+  const selectCapitalStation = () => {
+    if (capitalStation) {
+      setSelectedStation(capitalStation.stationId)
+    }
+  }
+
   // Filtrar estações com alertas
   const stationsWithAlerts = weatherData.filter(w => w.alertLevel !== 'normal')
   const severeCount = stationsWithAlerts.filter(s => s.alertLevel === 'severe').length
@@ -92,6 +104,20 @@ export default function EstadoPainel2Page() {
               selectedState={selectedState}
               onSelect={setSelectedState}
             />
+            {capitalStation && (
+              <button
+                onClick={selectCapitalStation}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  selectedStation === capitalStation.stationId
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+                }`}
+                title={`Ver dados de ${stateInfo?.capital}`}
+              >
+                <Building2 size={14} />
+                <span>{stateInfo?.capital}</span>
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500">
             Monitoramento em tempo real - {stateInfo?.name} ({weatherData.length} estações INMET)

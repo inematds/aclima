@@ -7,7 +7,8 @@ import {
   Minus,
   AlertTriangle,
   RefreshCw,
-  Loader2
+  Loader2,
+  Building2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
@@ -48,7 +49,7 @@ export default function EstadoPainel1Page() {
 
   const stateInfo = BRAZILIAN_STATES[selectedState]
 
-  // Calcular estatísticas
+  // Calcular estatísticas (médias)
   const stats = {
     avgRain30min: weatherData.length > 0
       ? weatherData.reduce((sum, w) => sum + w.rain.last30min, 0) / weatherData.length
@@ -62,6 +63,24 @@ export default function EstadoPainel1Page() {
     maxRain1h: weatherData.length > 0
       ? Math.max(...weatherData.map(w => w.rain.last1h))
       : 0,
+  }
+
+  // Calcular totais (soma de todas estações)
+  const totals = {
+    totalRain30min: weatherData.reduce((sum, w) => sum + w.rain.last30min, 0),
+    totalRain1h: weatherData.reduce((sum, w) => sum + w.rain.last1h, 0),
+    totalRain24h: weatherData.reduce((sum, w) => sum + w.rain.last24h, 0),
+  }
+
+  // Encontrar estação da capital
+  const capitalStation = weatherData.find(w =>
+    w.stationName.toLowerCase().includes(stateInfo?.capital?.toLowerCase() || '')
+  )
+
+  const selectCapitalStation = () => {
+    if (capitalStation) {
+      setSelectedStation(capitalStation.stationId)
+    }
   }
 
   const alertCount = weatherData.filter(w => w.alertLevel !== 'normal').length
@@ -96,6 +115,20 @@ export default function EstadoPainel1Page() {
               selectedState={selectedState}
               onSelect={setSelectedState}
             />
+            {capitalStation && (
+              <button
+                onClick={selectCapitalStation}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  selectedStation === capitalStation.stationId
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+                }`}
+                title={`Ver dados de ${stateInfo?.capital}`}
+              >
+                <Building2 size={14} />
+                <span>{stateInfo?.capital}</span>
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500">
             Visão integrada das estações INMET em {stateInfo?.name || selectedState}
@@ -235,7 +268,7 @@ export default function EstadoPainel1Page() {
                 </div>
               )}
 
-              {/* Acumulados */}
+              {/* Acumulados Médios */}
               <div className="bg-white rounded-lg shadow-sm border p-4">
                 <h3 className="font-semibold text-gray-900 mb-3">Acumulados Médios - {stateInfo?.name}</h3>
                 <div className="grid grid-cols-3 gap-3">
@@ -255,6 +288,31 @@ export default function EstadoPainel1Page() {
                     <div className="text-xs text-gray-400">mm</div>
                   </div>
                 </div>
+              </div>
+
+              {/* Acumulados Totais */}
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">Acumulados Totais - {stateInfo?.name}</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-indigo-50 rounded-lg">
+                    <div className="text-xs text-gray-500">30 min</div>
+                    <div className="text-xl font-bold text-indigo-700">{totals.totalRain30min.toFixed(1)}</div>
+                    <div className="text-xs text-gray-400">mm</div>
+                  </div>
+                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+                    <div className="text-xs text-gray-500">1 hora</div>
+                    <div className="text-xl font-bold text-purple-700">{totals.totalRain1h.toFixed(1)}</div>
+                    <div className="text-xs text-gray-400">mm</div>
+                  </div>
+                  <div className="text-center p-3 bg-pink-50 rounded-lg">
+                    <div className="text-xs text-gray-500">24 horas</div>
+                    <div className="text-xl font-bold text-pink-700">{totals.totalRain24h.toFixed(1)}</div>
+                    <div className="text-xs text-gray-400">mm</div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Soma de {weatherData.length} estações
+                </p>
               </div>
 
               {/* Tendência de Risco */}

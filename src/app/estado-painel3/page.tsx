@@ -11,7 +11,8 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Building2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
@@ -38,6 +39,17 @@ export default function EstadoPainel3Page() {
   } = useStateWeather({ state: selectedState, refreshInterval: 5 * 60 * 1000 })
 
   const stateInfo = BRAZILIAN_STATES[selectedState]
+
+  // Encontrar estação da capital
+  const capitalStation = weatherData.find(w =>
+    w.stationName.toLowerCase().includes(stateInfo?.capital?.toLowerCase() || '')
+  )
+
+  const selectCapitalStation = () => {
+    if (capitalStation) {
+      setSelectedStation(capitalStation.stationId)
+    }
+  }
 
   // Contar status das estações
   const onlineCount = weatherData.filter(s => s.status === 'online').length
@@ -69,6 +81,20 @@ export default function EstadoPainel3Page() {
               selectedState={selectedState}
               onSelect={setSelectedState}
             />
+            {capitalStation && (
+              <button
+                onClick={selectCapitalStation}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  selectedStation === capitalStation.stationId
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+                }`}
+                title={`Ver dados de ${stateInfo?.capital}`}
+              >
+                <Building2 size={14} />
+                <span>{stateInfo?.capital}</span>
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500">
             Dados em tempo real dos sensores INMET - {stateInfo?.name}
