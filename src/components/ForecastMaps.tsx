@@ -234,7 +234,7 @@ export default function ForecastMaps({
       </div>
 
       {/* Map view */}
-      <div className="relative aspect-video bg-gray-900 overflow-hidden">
+      <div className="relative bg-gray-900 overflow-hidden" style={{ aspectRatio: '1/1', maxHeight: '400px' }}>
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -256,12 +256,13 @@ export default function ForecastMaps({
             {/* Base map (OpenStreetMap) */}
             <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
               {getTileGrid().map(({ x, y }) => (
-                <div key={`base-${x}-${y}`} className="relative">
+                <div key={`base-${x}-${y}`} className="relative overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`}
                     alt=""
-                    className="w-full h-full object-cover opacity-70"
+                    className="w-full h-full opacity-70"
+                    style={{ display: 'block' }}
                     loading="lazy"
                   />
                 </div>
@@ -272,12 +273,13 @@ export default function ForecastMaps({
             {activeLayer === 'radar' && rainViewerData && currentFrameData && (
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
                 {getTileGrid().map(({ x, y }) => (
-                  <div key={`radar-${x}-${y}`} className="relative">
+                  <div key={`radar-${x}-${y}`} className="relative overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`${rainViewerData.host}${currentFrameData.path}/256/${zoom}/${x}/${y}/2/1_1.png`}
                       alt=""
-                      className="w-full h-full object-cover"
+                      className="w-full h-full"
+                      style={{ display: 'block' }}
                       loading="lazy"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none'
@@ -295,12 +297,13 @@ export default function ForecastMaps({
                   const url = getOwmTileUrl(layerConfig[activeLayer].owmLayer!, x, y)
                   if (!url) return null
                   return (
-                    <div key={`owm-${x}-${y}`} className="relative">
+                    <div key={`owm-${x}-${y}`} className="relative overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={url}
                         alt=""
-                        className="w-full h-full object-cover"
+                        className="w-full h-full"
+                        style={{ display: 'block' }}
                         loading="lazy"
                         onError={(e) => {
                           console.error('OWM tile error:', url)
