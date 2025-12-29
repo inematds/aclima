@@ -37,6 +37,17 @@ const statusColors = {
   offline: 'text-red-500',
 }
 
+// Mapeamento de nome do estado para código
+const STATE_NAME_TO_CODE: Record<string, StateCode> = {
+  'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM',
+  'Bahia': 'BA', 'Ceará': 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES',
+  'Goiás': 'GO', 'Maranhão': 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS',
+  'Minas Gerais': 'MG', 'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR',
+  'Pernambuco': 'PE', 'Piauí': 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN',
+  'Rio Grande do Sul': 'RS', 'Rondônia': 'RO', 'Roraima': 'RR', 'Santa Catarina': 'SC',
+  'São Paulo': 'SP', 'Sergipe': 'SE', 'Tocantins': 'TO',
+}
+
 // Função para calcular distância entre dois pontos (Haversine)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371 // Raio da Terra em km
@@ -163,6 +174,12 @@ export default function WeatherDashboard() {
     setSelectedCity(location)
     setShowSearchResults(false)
     setCityWeatherLoading(true)
+
+    // Trocar automaticamente para o estado da cidade selecionada
+    const cityStateCode = STATE_NAME_TO_CODE[location.state]
+    if (cityStateCode && cityStateCode !== selectedState) {
+      setSelectedState(cityStateCode)
+    }
 
     try {
       const response = await fetch(
