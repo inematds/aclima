@@ -398,7 +398,7 @@ export default function Painel2Page() {
                     <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Fonte do Dado</h4>
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">INMET - Instituto Nacional de Meteorologia</span>
+                      <span className="text-gray-700">Open-Meteo API</span>
                     </div>
                   </div>
                 </div>

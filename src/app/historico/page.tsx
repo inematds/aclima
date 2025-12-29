@@ -1,59 +1,156 @@
 'use client'
 
-import { useState } from 'react'
-import { Calendar, TrendingUp, Droplets, BarChart3, Download, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, TrendingUp, Droplets, BarChart3, Download, ChevronDown, Loader2, AlertTriangle, FlaskConical } from 'lucide-react'
+import CapitalSelector from '@/components/CapitalSelector'
+import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 
-type Period = '7d' | '30d' | '90d' | '1y'
+type Period = '24h' | '7d' | '30d'
 
-interface DailyData {
-  date: string
-  total: number
-  max: number
-  avgIntensity: number
-  alerts: number
+interface HourlyData {
+  time: string
+  precipitation: number
+  temperature: number
+  humidity: number
 }
 
-// Dados mockados para demonstração
-const mockDailyData: DailyData[] = [
-  { date: '28/12', total: 32.5, max: 8.2, avgIntensity: 2.4, alerts: 3 },
-  { date: '27/12', total: 18.3, max: 5.1, avgIntensity: 1.8, alerts: 1 },
-  { date: '26/12', total: 45.2, max: 12.4, avgIntensity: 4.2, alerts: 5 },
-  { date: '25/12', total: 8.7, max: 2.3, avgIntensity: 0.9, alerts: 0 },
-  { date: '24/12', total: 22.1, max: 6.8, avgIntensity: 2.1, alerts: 2 },
-  { date: '23/12', total: 55.8, max: 15.2, avgIntensity: 5.1, alerts: 7 },
-  { date: '22/12', total: 12.4, max: 3.5, avgIntensity: 1.2, alerts: 0 },
-]
-
-const mockMonthlyData = [
-  { month: 'Jul', total: 145 },
-  { month: 'Ago', total: 98 },
-  { month: 'Set', total: 187 },
-  { month: 'Out', total: 234 },
-  { month: 'Nov', total: 312 },
-  { month: 'Dez', total: 278 },
-]
+// Componente de badge de simulação
+function SimulationBadge({ className = '' }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200 ${className}`}>
+      <FlaskConical className="h-3 w-3" />
+      Simulação
+    </span>
+  )
+}
 
 export default function HistoricoPage() {
-  const [period, setPeriod] = useState<Period>('7d')
-  const [selectedRegion, setSelectedRegion] = useState('all')
+  const [period, setPeriod] = useState<Period>('24h')
+  const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
+  const [hourlyData, setHourlyData] = useState<HourlyData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const totalPeriod = mockDailyData.reduce((acc, d) => acc + d.total, 0)
-  const maxPeriod = Math.max(...mockDailyData.map(d => d.max))
-  const avgPeriod = totalPeriod / mockDailyData.length
-  const totalAlerts = mockDailyData.reduce((acc, d) => acc + d.alerts, 0)
+  const capitalInfo = BRAZILIAN_CAPITALS[selectedCapital]
 
+  // Buscar dados históricos do Open-Meteo
+  useEffect(() => {
+    async function fetchHistoricalData() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const params = new URLSearchParams({
+          latitude: capitalInfo.latitude.toString(),
+          longitude: capitalInfo.longitude.toString(),
+          hourly: 'precipitation,temperature_2m,relative_humidity_2m',
+          timezone: 'America/Sao_Paulo',
+          past_hours: period === '24h' ? '24' : period === '7d' ? '168' : '720',
+          forecast_hours: '0'
+        })
+
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+
+        if (!response.ok) {
+          throw new Error('Falha ao buscar dados históricos')
+        }
+
+        const data = await response.json()
+
+        const formatted: HourlyData[] = data.hourly.time.map((time: string, i: number) => ({
+          time,
+          precipitation: data.hourly.precipitation[i] || 0,
+          temperature: data.hourly.temperature_2m[i] || 0,
+          humidity: data.hourly.relative_humidity_2m[i] || 0,
+        }))
+
+        setHourlyData(formatted)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro desconhecido')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHistoricalData()
+  }, [capitalInfo.latitude, capitalInfo.longitude, period])
+
+  // Calcular estatísticas
+  const totalPrecip = hourlyData.reduce((acc, d) => acc + d.precipitation, 0)
+  const maxPrecip = hourlyData.length > 0 ? Math.max(...hourlyData.map(d => d.precipitation)) : 0
+  const avgTemp = hourlyData.length > 0 ? hourlyData.reduce((acc, d) => acc + d.temperature, 0) / hourlyData.length : 0
+  const avgHumidity = hourlyData.length > 0 ? hourlyData.reduce((acc, d) => acc + d.humidity, 0) / hourlyData.length : 0
+
+  // Agrupar por dia para gráfico diário
+  const dailyData = hourlyData.reduce((acc, curr) => {
+    const date = curr.time.split('T')[0]
+    if (!acc[date]) {
+      acc[date] = { total: 0, max: 0, count: 0, temps: [] as number[] }
+    }
+    acc[date].total += curr.precipitation
+    acc[date].max = Math.max(acc[date].max, curr.precipitation)
+    acc[date].count++
+    acc[date].temps.push(curr.temperature)
+    return acc
+  }, {} as Record<string, { total: number; max: number; count: number; temps: number[] }>)
+
+  const dailyChartData = Object.entries(dailyData).map(([date, data]) => ({
+    date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    total: Math.round(data.total * 10) / 10,
+    max: Math.round(data.max * 10) / 10,
+    avgTemp: Math.round(data.temps.reduce((a, b) => a + b, 0) / data.temps.length * 10) / 10,
+  })).slice(-7) // últimos 7 dias
+
+  // Dados simulados para comparativo histórico
+  const mockMonthlyData = [
+    { month: 'Jul', total: 145 },
+    { month: 'Ago', total: 98 },
+    { month: 'Set', total: 187 },
+    { month: 'Out', total: 234 },
+    { month: 'Nov', total: 312 },
+    { month: 'Dez', total: 278 },
+  ]
   const maxMonthly = Math.max(...mockMonthlyData.map(d => d.total))
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-2" />
+          <p className="text-gray-500">Carregando histórico de {capitalInfo.name}...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-red-700 font-medium">Erro ao carregar dados</p>
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Histórico de Precipitação
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Histórico de Precipitação
+            </h1>
+            <CapitalSelector
+              selectedCapital={selectedCapital}
+              onSelect={setSelectedCapital}
+            />
+          </div>
           <p className="text-gray-500">
-            Análise de dados históricos e tendências
+            Análise de dados históricos - {capitalInfo.name}, {capitalInfo.stateCode}
           </p>
         </div>
 
@@ -66,27 +163,9 @@ export default function HistoricoPage() {
               onChange={(e) => setPeriod(e.target.value as Period)}
               className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="24h">Últimas 24 horas</option>
               <option value="7d">Últimos 7 dias</option>
               <option value="30d">Últimos 30 dias</option>
-              <option value="90d">Últimos 90 dias</option>
-              <option value="1y">Último ano</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          </div>
-
-          {/* Região */}
-          <div className="relative">
-            <select
-              value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Todas as regiões</option>
-              <option value="centro">Centro</option>
-              <option value="sul">Zona Sul</option>
-              <option value="norte">Zona Norte</option>
-              <option value="leste">Zona Leste</option>
-              <option value="oeste">Zona Oeste</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
@@ -99,7 +178,7 @@ export default function HistoricoPage() {
         </div>
       </div>
 
-      {/* Cards de Resumo */}
+      {/* Cards de Resumo - DADOS REAIS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
@@ -108,7 +187,8 @@ export default function HistoricoPage() {
             </div>
             <span className="text-sm text-gray-500">Total Período</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{totalPeriod.toFixed(1)} mm</div>
+          <div className="text-2xl font-bold text-gray-900">{totalPrecip.toFixed(1)} mm</div>
+          <div className="text-xs text-green-600 mt-1">Dados reais Open-Meteo</div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
@@ -118,7 +198,8 @@ export default function HistoricoPage() {
             </div>
             <span className="text-sm text-gray-500">Máxima (1h)</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{maxPeriod.toFixed(1)} mm</div>
+          <div className="text-2xl font-bold text-gray-900">{maxPrecip.toFixed(1)} mm</div>
+          <div className="text-xs text-green-600 mt-1">Dados reais Open-Meteo</div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
@@ -126,57 +207,72 @@ export default function HistoricoPage() {
             <div className="p-2 bg-green-100 rounded-lg">
               <BarChart3 className="h-5 w-5 text-green-600" />
             </div>
-            <span className="text-sm text-gray-500">Média Diária</span>
+            <span className="text-sm text-gray-500">Temp. Média</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{avgPeriod.toFixed(1)} mm</div>
+          <div className="text-2xl font-bold text-gray-900">{avgTemp.toFixed(1)}°C</div>
+          <div className="text-xs text-green-600 mt-1">Dados reais Open-Meteo</div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <Calendar className="h-5 w-5 text-red-600" />
+            <div className="p-2 bg-cyan-100 rounded-lg">
+              <Droplets className="h-5 w-5 text-cyan-600" />
             </div>
-            <span className="text-sm text-gray-500">Total Alertas</span>
+            <span className="text-sm text-gray-500">Umidade Média</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{totalAlerts}</div>
+          <div className="text-2xl font-bold text-gray-900">{avgHumidity.toFixed(0)}%</div>
+          <div className="text-xs text-green-600 mt-1">Dados reais Open-Meteo</div>
         </div>
       </div>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico Diário */}
+        {/* Gráfico Diário - DADOS REAIS */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Precipitação Diária
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Precipitação por Dia
+            </h2>
+            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Dados reais</span>
+          </div>
           <div className="h-64 flex items-end justify-between gap-2">
-            {mockDailyData.map((data, index) => {
-              const heightPercent = (data.total / 60) * 100
-              const isHigh = data.total > 30
+            {dailyChartData.length > 0 ? (
+              dailyChartData.map((data, index) => {
+                const maxTotal = Math.max(...dailyChartData.map(d => d.total), 1)
+                const heightPercent = (data.total / maxTotal) * 100
+                const isHigh = data.total > 30
 
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <span className="text-xs text-gray-600 mb-1">
-                    {data.total.toFixed(0)}
-                  </span>
-                  <div
-                    className={`w-full rounded-t transition-all ${
-                      isHigh ? 'bg-orange-400' : 'bg-blue-400'
-                    }`}
-                    style={{ height: `${Math.max(heightPercent, 5)}%` }}
-                  />
-                  <span className="text-xs text-gray-500 mt-2">{data.date}</span>
-                </div>
-              )
-            })}
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <span className="text-xs text-gray-600 mb-1">
+                      {data.total.toFixed(0)}
+                    </span>
+                    <div
+                      className={`w-full rounded-t transition-all ${
+                        isHigh ? 'bg-orange-400' : 'bg-blue-400'
+                      }`}
+                      style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                    />
+                    <span className="text-xs text-gray-500 mt-2">{data.date}</span>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                Sem dados disponíveis
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Gráfico Mensal */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Acumulado Mensal (6 meses)
-          </h2>
+        {/* Gráfico Mensal - SIMULAÇÃO */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-purple-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Acumulado Mensal (6 meses)
+            </h2>
+            <SimulationBadge />
+          </div>
           <div className="h-64 flex items-end justify-between gap-4">
             {mockMonthlyData.map((data, index) => {
               const heightPercent = (data.total / maxMonthly) * 100
@@ -187,7 +283,7 @@ export default function HistoricoPage() {
                     {data.total}
                   </span>
                   <div
-                    className="w-full bg-blue-500 rounded-t transition-all"
+                    className="w-full bg-purple-400 rounded-t transition-all opacity-70"
                     style={{ height: `${heightPercent}%` }}
                   />
                   <span className="text-xs text-gray-500 mt-2">{data.month}</span>
@@ -195,14 +291,20 @@ export default function HistoricoPage() {
               )
             })}
           </div>
+          <p className="text-xs text-purple-600 mt-3 text-center">
+            Dados ilustrativos para demonstração
+          </p>
         </div>
       </div>
 
-      {/* Tabela de Dados */}
+      {/* Tabela de Dados - DADOS REAIS */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Dados Detalhados
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Dados Detalhados por Dia
+          </h2>
+          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Dados reais</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -210,13 +312,12 @@ export default function HistoricoPage() {
                 <th className="pb-3 font-medium">Data</th>
                 <th className="pb-3 font-medium text-center">Total (mm)</th>
                 <th className="pb-3 font-medium text-center">Máx. 1h (mm)</th>
-                <th className="pb-3 font-medium text-center">Intensidade Média</th>
-                <th className="pb-3 font-medium text-center">Alertas</th>
+                <th className="pb-3 font-medium text-center">Temp. Média</th>
                 <th className="pb-3 font-medium text-center">Classificação</th>
               </tr>
             </thead>
             <tbody>
-              {mockDailyData.map((data, index) => {
+              {dailyChartData.map((data, index) => {
                 let classification = { label: 'Normal', color: 'bg-green-100 text-green-700' }
                 if (data.total >= 50) {
                   classification = { label: 'Muito Alto', color: 'bg-red-100 text-red-700' }
@@ -228,19 +329,10 @@ export default function HistoricoPage() {
 
                 return (
                   <tr key={index} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-3 font-medium text-gray-900">{data.date}/2024</td>
+                    <td className="py-3 font-medium text-gray-900">{data.date}</td>
                     <td className="py-3 text-center">{data.total.toFixed(1)}</td>
                     <td className="py-3 text-center">{data.max.toFixed(1)}</td>
-                    <td className="py-3 text-center">{data.avgIntensity.toFixed(1)} mm/h</td>
-                    <td className="py-3 text-center">
-                      {data.alerts > 0 ? (
-                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                          {data.alerts}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
+                    <td className="py-3 text-center">{data.avgTemp.toFixed(1)}°C</td>
                     <td className="py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${classification.color}`}>
                         {classification.label}
@@ -254,27 +346,45 @@ export default function HistoricoPage() {
         </div>
       </div>
 
-      {/* Comparativo */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Comparativo com Média Histórica
-        </h2>
+      {/* Comparativo - SIMULAÇÃO */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-purple-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Comparativo com Média Histórica
+          </h2>
+          <SimulationBadge />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">Dezembro 2024</p>
             <p className="text-3xl font-bold text-gray-900">278 mm</p>
             <p className="text-sm text-red-600 mt-1">+23% acima da média</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">Média Histórica (Dez)</p>
             <p className="text-3xl font-bold text-gray-900">226 mm</p>
             <p className="text-sm text-gray-400 mt-1">Média dos últimos 10 anos</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
             <p className="text-sm text-gray-500 mb-1">Ano 2024 (Jan-Dez)</p>
             <p className="text-3xl font-bold text-gray-900">1.254 mm</p>
             <p className="text-sm text-orange-600 mt-1">+12% acima da média anual</p>
           </div>
+        </div>
+        <p className="text-xs text-purple-600 mt-4 text-center">
+          Dados ilustrativos para demonstração - Comparativo histórico requer integração com banco de dados
+        </p>
+      </div>
+
+      {/* Legenda */}
+      <div className="flex items-center justify-center gap-6 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-green-500"></span>
+          <span className="text-gray-600">Dados reais (Open-Meteo API)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-purple-600" />
+          <span className="text-gray-600">Simulação (dados ilustrativos)</span>
         </div>
       </div>
     </div>
