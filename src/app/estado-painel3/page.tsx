@@ -78,7 +78,7 @@ export default function EstadoPainel3Page() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -147,7 +147,7 @@ export default function EstadoPainel3Page() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+        <div className="grid grid-cols-12 gap-4">
           {/* Lista de Estações */}
           <div className="col-span-3 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
             <div className="p-3 border-b bg-gray-50">

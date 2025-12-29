@@ -112,7 +112,7 @@ export default function EstadoPainel1Page() {
     : weatherData[0]
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -187,7 +187,7 @@ export default function EstadoPainel1Page() {
       ) : (
         <>
           {/* Layout principal - 3 colunas */}
-          <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+          <div className="grid grid-cols-12 gap-4">
 
             {/* Coluna 1: Lista de Estações */}
             <div className="col-span-5 bg-white rounded-lg shadow-sm border overflow-hidden flex flex-col">
