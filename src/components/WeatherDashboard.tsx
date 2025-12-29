@@ -5,6 +5,7 @@ import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import StateSelector from './StateSelector'
 import CitySearch from './CitySearch'
+import ForecastMapsDynamic from './ForecastMapsDynamic'
 import {
   Droplets,
   Thermometer,
@@ -17,7 +18,7 @@ import {
   Navigation
 } from 'lucide-react'
 import type { StateCode } from '@/types/weather'
-import { BRAZILIAN_STATES } from '@/types/weather'
+import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS } from '@/types/weather'
 
 const alertColors = {
   normal: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' },
@@ -66,6 +67,14 @@ export default function WeatherDashboard() {
   }
 
   const stateInfo = BRAZILIAN_STATES[effectiveState]
+
+  // Encontrar coordenadas da capital do estado
+  const capitalEntry = Object.values(BRAZILIAN_CAPITALS).find(
+    cap => cap.stateCode === effectiveState
+  )
+  const capitalCoords = capitalEntry
+    ? { lat: capitalEntry.latitude, lng: capitalEntry.longitude }
+    : { lat: -15.7801, lng: -47.9292 } // Default: Brasília
 
   // Calcular estatísticas gerais
   const stats = {
@@ -242,24 +251,13 @@ export default function WeatherDashboard() {
         </div>
       </div>
 
-      {/* Busca de Cidade */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1">
-          <CitySearch />
-        </div>
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="font-semibold text-gray-900 mb-2">Buscar qualquer cidade</h3>
-          <p className="text-sm text-gray-500">
-            Digite o nome de qualquer cidade brasileira no campo ao lado para ver as condições meteorológicas em tempo real.
-            Os dados são fornecidos pela API Open-Meteo com base nas coordenadas da cidade.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">Temperatura</span>
-            <span className="text-xs bg-cyan-50 text-cyan-600 px-2 py-1 rounded">Umidade</span>
-            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded">Precipitação</span>
-            <span className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">Vento</span>
-          </div>
-        </div>
+      {/* Busca de Cidade e Mapas de Previsão */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CitySearch />
+        <ForecastMapsDynamic
+          latitude={capitalCoords.lat}
+          longitude={capitalCoords.lng}
+        />
       </div>
 
       {/* Lista de estações */}

@@ -12,7 +12,8 @@ import {
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
-import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
+import ForecastMapsDynamic from '@/components/ForecastMapsDynamic'
+import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS, type StateCode } from '@/types/weather'
 import { useStateWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
 type RiskLevel = 'normal' | 'attention' | 'alert' | 'severe'
@@ -48,6 +49,14 @@ export default function EstadoPainel1Page() {
   }
 
   const stateInfo = BRAZILIAN_STATES[selectedState]
+
+  // Encontrar coordenadas da capital do estado
+  const capitalEntry = Object.values(BRAZILIAN_CAPITALS).find(
+    cap => cap.stateCode === selectedState
+  )
+  const capitalCoords = capitalEntry
+    ? { lat: capitalEntry.latitude, lng: capitalEntry.longitude }
+    : { lat: -15.7801, lng: -47.9292 }
 
   // Calcular estatísticas (médias)
   const stats = {
@@ -405,6 +414,14 @@ export default function EstadoPainel1Page() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Mapas de Previsão */}
+          <div className="mt-4">
+            <ForecastMapsDynamic
+              latitude={capitalCoords.lat}
+              longitude={capitalCoords.lng}
+            />
           </div>
 
           {/* Legenda */}

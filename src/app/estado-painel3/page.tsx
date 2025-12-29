@@ -16,7 +16,8 @@ import {
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
-import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
+import ForecastMapsDynamic from '@/components/ForecastMapsDynamic'
+import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS, type StateCode } from '@/types/weather'
 import { useStateWeather, formatTimeAgo } from '@/hooks/useWeather'
 
 type SensorStatus = 'online' | 'offline' | 'warning'
@@ -39,6 +40,14 @@ export default function EstadoPainel3Page() {
   } = useStateWeather({ state: selectedState, refreshInterval: 5 * 60 * 1000 })
 
   const stateInfo = BRAZILIAN_STATES[selectedState]
+
+  // Encontrar coordenadas da capital do estado
+  const capitalEntry = Object.values(BRAZILIAN_CAPITALS).find(
+    cap => cap.stateCode === selectedState
+  )
+  const capitalCoords = capitalEntry
+    ? { lat: capitalEntry.latitude, lng: capitalEntry.longitude }
+    : { lat: -15.7801, lng: -47.9292 }
 
   // Encontrar estação da capital
   const capitalStation = weatherData.find(w =>
@@ -466,6 +475,14 @@ export default function EstadoPainel3Page() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Mapas de Previsão */}
+          <div className="col-span-12 mt-4">
+            <ForecastMapsDynamic
+              latitude={capitalCoords.lat}
+              longitude={capitalCoords.lng}
+            />
           </div>
         </div>
       )}
