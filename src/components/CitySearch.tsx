@@ -118,13 +118,13 @@ export default function CitySearch({ onLocationSelect }: CitySearchProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <div className="p-3 border-b bg-gray-50">
+    <div className="bg-white rounded-lg shadow-sm border">
+      <div className="p-3 border-b bg-gray-50 rounded-t-lg">
         <h3 className="font-semibold text-gray-900">Buscar Cidade</h3>
         <p className="text-xs text-gray-500">Digite o nome da cidade para ver o clima</p>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 relative">
         {/* Campo de busca */}
         <div className="relative">
           <div className="flex gap-2">
@@ -183,7 +183,7 @@ export default function CitySearch({ onLocationSelect }: CitySearchProps) {
         </div>
 
         {/* Erro */}
-        {error && !showResults && (
+        {error && !selectedLocation && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
             {error}
           </div>
