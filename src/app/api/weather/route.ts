@@ -1,70 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { STATION_INFO, BRAZILIAN_CAPITALS, BRAZILIAN_STATES, type WeatherData, type CapitalSlug, type StateCode } from '@/types/weather'
+import { BRAZILIAN_CAPITALS, BRAZILIAN_STATES, type WeatherData, type CapitalSlug, type StateCode } from '@/types/weather'
 
-const INMET_API_BASE = 'https://apitempo.inmet.gov.br'
-
-// Headers para simular navegador (INMET bloqueia requests sem User-Agent)
-const INMET_HEADERS = {
-  'Accept': 'application/json',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Referer': 'https://tempo.inmet.gov.br/',
-}
+const OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast'
 
 // Cache em memória
-const weatherCache: Map<string, { data: any; timestamp: number }> = new Map()
-const stationsCache: { data: any[] | null; timestamp: number } = { data: null, timestamp: 0 }
+const weatherCache: Map<string, { data: WeatherData; timestamp: number }> = new Map()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
-const STATIONS_CACHE_TTL = 60 * 60 * 1000 // 1 hora para lista de estações
-
-// Buscar lista de todas as estações do INMET
-async function fetchAllStations(): Promise<any[]> {
-  if (stationsCache.data && Date.now() - stationsCache.timestamp < STATIONS_CACHE_TTL) {
-    return stationsCache.data
-  }
-
-  try {
-    const response = await fetch(`${INMET_API_BASE}/estacoes/T`, {
-      headers: INMET_HEADERS,
-      next: { revalidate: 3600 }
-    })
-
-    if (!response.ok) {
-      console.error(`Error fetching stations list: ${response.status}`)
-      return stationsCache.data || []
-    }
-
-    const data = await response.json()
-    stationsCache.data = data
-    stationsCache.timestamp = Date.now()
-    return data
-  } catch (error) {
-    console.error('Error fetching stations list:', error)
-    return stationsCache.data || []
-  }
-}
-
-// Buscar estações por estado
-async function getStationsByState(stateCode: string): Promise<string[]> {
-  const allStations = await fetchAllStations()
-
-  return allStations
-    .filter((s: any) =>
-      s.SG_ESTADO === stateCode &&
-      s.CD_SITUACAO === 'Operante' &&
-      s.TP_ESTACAO === 'Automatica'
-    )
-    .map((s: any) => s.CD_ESTACAO)
-}
-
-// Verificar se estado tem dados disponíveis
-async function checkStateHasData(stateCode: string): Promise<{ hasData: boolean; stationCount: number }> {
-  const stations = await getStationsByState(stateCode)
-  return {
-    hasData: stations.length > 0,
-    stationCount: stations.length
-  }
-}
 
 // Calcular nível de alerta baseado em precipitação
 function calculateAlertLevel(rain1h: number, rain24h: number): 'normal' | 'attention' | 'alert' | 'severe' {
@@ -74,392 +15,293 @@ function calculateAlertLevel(rain1h: number, rain24h: number): 'normal' | 'atten
   return 'normal'
 }
 
-// Gerar dados simulados quando API não retorna dados (fallback)
-function generateFallbackData(stationCode: string, stationMeta?: any): WeatherData | null {
-  if (!stationMeta) return null
-
-  // Simular valores baseados em padrões típicos
-  const now = new Date()
-  const baseTemp = 20 + Math.random() * 10 // 20-30°C
-  const baseHumidity = 50 + Math.random() * 40 // 50-90%
-  const rain = Math.random() < 0.3 ? Math.random() * 5 : 0 // 30% chance de chuva leve
-
-  return {
-    stationId: stationCode,
-    stationName: stationMeta.DC_NOME || stationCode,
-    state: stationMeta.SG_ESTADO || '',
-    coordinates: {
-      lat: parseFloat(stationMeta.VL_LATITUDE) || 0,
-      lng: parseFloat(stationMeta.VL_LONGITUDE) || 0
-    },
-    timestamp: now.toISOString(),
-    rain: {
-      current: Math.round(rain * 10) / 10,
-      last30min: Math.round(rain * 0.5 * 10) / 10,
-      last1h: Math.round(rain * 10) / 10,
-      last24h: Math.round(rain * 5 * 10) / 10
-    },
-    temperature: {
-      current: Math.round(baseTemp * 10) / 10,
-      min: Math.round((baseTemp - 5) * 10) / 10,
-      max: Math.round((baseTemp + 5) * 10) / 10
-    },
-    humidity: {
-      current: Math.round(baseHumidity),
-      min: Math.round(baseHumidity - 20),
-      max: Math.round(baseHumidity + 10)
-    },
-    wind: {
-      speed: Math.round(Math.random() * 20 * 10) / 10,
-      direction: Math.round(Math.random() * 360),
-      gust: Math.round(Math.random() * 30 * 10) / 10
-    },
-    pressure: Math.round((1010 + Math.random() * 10) * 10) / 10,
-    status: 'delayed' as const,
-    alertLevel: calculateAlertLevel(rain, rain * 5)
-  }
-}
-
-// Determinar status da estação
-function getStationStatus(lastUpdate: Date): 'online' | 'delayed' | 'offline' {
-  const now = new Date()
-  const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60)
-
-  if (diffMinutes <= 15) return 'online'
-  if (diffMinutes <= 60) return 'delayed'
-  return 'offline'
-}
-
-// Buscar dados de uma estação
-async function fetchStationData(stationCode: string): Promise<any[]> {
-  const cacheKey = stationCode
+// Buscar dados do Open-Meteo para uma localização
+async function fetchOpenMeteoData(
+  latitude: number,
+  longitude: number,
+  locationId: string,
+  locationName: string,
+  state: string
+): Promise<WeatherData | null> {
+  const cacheKey = `${latitude},${longitude}`
   const cached = weatherCache.get(cacheKey)
 
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
 
-  // Buscar últimas 24 horas
-  const endDate = new Date()
-  const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000)
-
-  const formatDate = (d: Date) => d.toISOString().split('T')[0]
-
   try {
-    const response = await fetch(
-      `${INMET_API_BASE}/estacao/${formatDate(startDate)}/${formatDate(endDate)}/${stationCode}`,
-      {
-        headers: INMET_HEADERS,
-        next: { revalidate: 300 } // 5 minutos
-      }
-    )
+    const params = new URLSearchParams({
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      current: [
+        'temperature_2m',
+        'relative_humidity_2m',
+        'precipitation',
+        'rain',
+        'weather_code',
+        'wind_speed_10m',
+        'wind_direction_10m',
+        'wind_gusts_10m',
+        'surface_pressure'
+      ].join(','),
+      hourly: [
+        'temperature_2m',
+        'relative_humidity_2m',
+        'precipitation',
+        'rain'
+      ].join(','),
+      timezone: 'America/Sao_Paulo',
+      past_hours: '24',
+      forecast_hours: '1'
+    })
 
-    // 204 No Content significa que não há dados para esse período
-    if (response.status === 204) {
-      console.log(`Station ${stationCode}: No data available (204)`)
-      return []
-    }
+    const response = await fetch(`${OPEN_METEO_API}?${params}`, {
+      next: { revalidate: 300 } // 5 minutos
+    })
 
     if (!response.ok) {
-      console.error(`Error fetching station ${stationCode}: ${response.status}`)
-      return []
+      console.error(`Open-Meteo error for ${locationName}: ${response.status}`)
+      return cached?.data || null
     }
 
-    // Verificar se há conteúdo antes de parsear JSON
-    const text = await response.text()
-    if (!text || text.trim() === '') {
-      console.log(`Station ${stationCode}: Empty response`)
-      return []
-    }
+    const data = await response.json()
 
-    let data
-    try {
-      data = JSON.parse(text)
-    } catch (parseError) {
-      console.error(`Station ${stationCode}: Invalid JSON response`)
-      return []
+    // Calcular acumulados de precipitação das últimas horas
+    const hourlyPrecip = data.hourly?.precipitation || []
+    const hourlyRain = data.hourly?.rain || []
+    const hourlyTemp = data.hourly?.temperature_2m || []
+    const hourlyHumidity = data.hourly?.relative_humidity_2m || []
+
+    // Últimas 24 horas de dados
+    const last24h = hourlyPrecip.slice(-24)
+    const last1h = hourlyPrecip.slice(-1)
+    const last30min = hourlyPrecip.slice(-1).map((v: number) => v / 2) // Aproximação
+
+    const rain24h = last24h.reduce((sum: number, val: number) => sum + (val || 0), 0)
+    const rain1h = last1h.reduce((sum: number, val: number) => sum + (val || 0), 0)
+    const rain30min = last30min.reduce((sum: number, val: number) => sum + (val || 0), 0)
+
+    // Min/Max das últimas 24h
+    const temps = hourlyTemp.slice(-24).filter((t: number) => t !== null)
+    const humidities = hourlyHumidity.slice(-24).filter((h: number) => h !== null)
+
+    const tempMin = temps.length > 0 ? Math.min(...temps) : data.current.temperature_2m
+    const tempMax = temps.length > 0 ? Math.max(...temps) : data.current.temperature_2m
+    const humidityMin = humidities.length > 0 ? Math.min(...humidities) : data.current.relative_humidity_2m
+    const humidityMax = humidities.length > 0 ? Math.max(...humidities) : data.current.relative_humidity_2m
+
+    const weatherData: WeatherData = {
+      stationId: locationId,
+      stationName: locationName,
+      state: state,
+      coordinates: {
+        lat: latitude,
+        lng: longitude
+      },
+      timestamp: data.current.time,
+
+      rain: {
+        current: Math.round((data.current.precipitation || 0) * 10) / 10,
+        last30min: Math.round(rain30min * 10) / 10,
+        last1h: Math.round(rain1h * 10) / 10,
+        last24h: Math.round(rain24h * 10) / 10
+      },
+
+      temperature: {
+        current: Math.round(data.current.temperature_2m * 10) / 10,
+        min: Math.round(tempMin * 10) / 10,
+        max: Math.round(tempMax * 10) / 10
+      },
+
+      humidity: {
+        current: Math.round(data.current.relative_humidity_2m),
+        min: Math.round(humidityMin),
+        max: Math.round(humidityMax)
+      },
+
+      wind: {
+        speed: Math.round(data.current.wind_speed_10m * 10) / 10,
+        direction: Math.round(data.current.wind_direction_10m),
+        gust: Math.round((data.current.wind_gusts_10m || 0) * 10) / 10
+      },
+
+      pressure: Math.round((data.current.surface_pressure || 0) * 10) / 10,
+
+      status: 'online',
+      alertLevel: calculateAlertLevel(rain1h, rain24h)
     }
 
     // Atualizar cache
-    weatherCache.set(cacheKey, { data, timestamp: Date.now() })
+    weatherCache.set(cacheKey, { data: weatherData, timestamp: Date.now() })
 
-    return data
+    return weatherData
   } catch (error) {
-    console.error(`Error fetching station ${stationCode}:`, error)
-    return cached?.data || []
-  }
-}
-
-// Processar dados brutos em formato normalizado
-function processStationData(rawData: any[], stationCode: string, stationMeta?: any): WeatherData | null {
-  if (!rawData || rawData.length === 0) return null
-
-  // Tentar pegar info do cache local ou dos metadados
-  const stationInfo = STATION_INFO[stationCode]
-
-  // Ordenar por data/hora (mais recente primeiro)
-  const sortedData = [...rawData].sort((a, b) => {
-    const dateA = new Date(`${a.DT_MEDICAO}T${a.HR_MEDICAO}:00Z`)
-    const dateB = new Date(`${b.DT_MEDICAO}T${b.HR_MEDICAO}:00Z`)
-    return dateB.getTime() - dateA.getTime()
-  })
-
-  const latest = sortedData[0]
-  const latestDate = new Date(`${latest.DT_MEDICAO}T${latest.HR_MEDICAO}:00Z`)
-
-  // Calcular acumulados
-  const now = new Date()
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
-  const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000)
-
-  let rain30min = 0
-  let rain1h = 0
-  let rain24h = 0
-
-  for (const obs of sortedData) {
-    const obsDate = new Date(`${obs.DT_MEDICAO}T${obs.HR_MEDICAO}:00Z`)
-    const rain = parseFloat(obs.CHUVA) || 0
-
-    rain24h += rain
-
-    if (obsDate >= oneHourAgo) {
-      rain1h += rain
-    }
-
-    if (obsDate >= thirtyMinAgo) {
-      rain30min += rain
-    }
-  }
-
-  // Temperatura e umidade
-  const temp = parseFloat(latest.TEM_INS) || 0
-  const tempMin = parseFloat(latest.TEM_MIN) || temp
-  const tempMax = parseFloat(latest.TEM_MAX) || temp
-
-  const humidity = parseFloat(latest.UMD_INS) || 0
-  const humidityMin = parseFloat(latest.UMD_MIN) || humidity
-  const humidityMax = parseFloat(latest.UMD_MAX) || humidity
-
-  // Vento (converter m/s para km/h)
-  const windSpeed = (parseFloat(latest.VEN_VEL) || 0) * 3.6
-  const windDir = parseFloat(latest.VEN_DIR) || 0
-  const windGust = (parseFloat(latest.VEN_RAJ) || 0) * 3.6
-
-  // Pressão
-  const pressure = parseFloat(latest.PRE_INS) || 0
-
-  // Calcular taxa de chuva atual (mm/h aproximado)
-  const rainCurrent = rain1h // Simplificado
-
-  // Nome da estação: usar do cache local ou do metadata ou do dado bruto
-  const stationName = stationInfo?.name || stationMeta?.DC_NOME || latest.DC_NOME || stationCode
-
-  return {
-    stationId: stationCode,
-    stationName: stationName,
-    state: latest.UF || stationMeta?.SG_ESTADO || stationInfo?.state || '',
-    coordinates: {
-      lat: parseFloat(latest.VL_LATITUDE) || parseFloat(stationMeta?.VL_LATITUDE) || 0,
-      lng: parseFloat(latest.VL_LONGITUDE) || parseFloat(stationMeta?.VL_LONGITUDE) || 0
-    },
-    timestamp: latestDate.toISOString(),
-
-    rain: {
-      current: Math.round(rainCurrent * 10) / 10,
-      last30min: Math.round(rain30min * 10) / 10,
-      last1h: Math.round(rain1h * 10) / 10,
-      last24h: Math.round(rain24h * 10) / 10
-    },
-
-    temperature: {
-      current: Math.round(temp * 10) / 10,
-      min: Math.round(tempMin * 10) / 10,
-      max: Math.round(tempMax * 10) / 10
-    },
-
-    humidity: {
-      current: Math.round(humidity),
-      min: Math.round(humidityMin),
-      max: Math.round(humidityMax)
-    },
-
-    wind: {
-      speed: Math.round(windSpeed * 10) / 10,
-      direction: Math.round(windDir),
-      gust: Math.round(windGust * 10) / 10
-    },
-
-    pressure: Math.round(pressure * 10) / 10,
-
-    status: getStationStatus(latestDate),
-    alertLevel: calculateAlertLevel(rain1h, rain24h)
+    console.error(`Error fetching Open-Meteo data for ${locationName}:`, error)
+    return cached?.data || null
   }
 }
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
-  const stationCode = searchParams.get('station')
   const capitalSlug = searchParams.get('capital') as CapitalSlug | null
   const stateCode = searchParams.get('state') as StateCode | null
-  const checkState = searchParams.get('checkState') // Para validar se estado tem dados
+  const lat = searchParams.get('lat')
+  const lng = searchParams.get('lng')
 
   try {
-    // Verificar se estado tem dados
-    if (checkState) {
-      const stateInfo = BRAZILIAN_STATES[checkState]
-      if (!stateInfo) {
+    // Busca por coordenadas específicas
+    if (lat && lng) {
+      const latitude = parseFloat(lat)
+      const longitude = parseFloat(lng)
+
+      if (isNaN(latitude) || isNaN(longitude)) {
         return NextResponse.json({
           success: false,
-          error: 'Invalid state code'
+          error: 'Invalid coordinates'
         }, { status: 400 })
       }
 
-      const { hasData, stationCount } = await checkStateHasData(checkState)
-      return NextResponse.json({
-        success: true,
-        state: stateInfo,
-        hasData,
-        stationCount,
-        timestamp: new Date().toISOString()
-      })
-    }
-
-    if (stationCode) {
-      // Buscar uma estação específica
-      const rawData = await fetchStationData(stationCode)
-      const processed = processStationData(rawData, stationCode)
-
-      if (!processed) {
-        return NextResponse.json(
-          { success: false, error: 'Station not found or no data available' },
-          { status: 404 }
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: processed,
-        timestamp: new Date().toISOString()
-      })
-    }
-
-    // Determinar quais estações buscar
-    let stationCodes: string[] = []
-    let locationInfo: any = null
-    let allStations: any[] = []
-
-    if (stateCode && BRAZILIAN_STATES[stateCode]) {
-      // Buscar todas as estações do estado
-      const stateInfo = BRAZILIAN_STATES[stateCode]
-      allStations = await fetchAllStations()
-
-      const stateStations = allStations.filter((s: any) =>
-        s.SG_ESTADO === stateCode &&
-        s.CD_SITUACAO === 'Operante' &&
-        s.TP_ESTACAO === 'Automatica'
+      const data = await fetchOpenMeteoData(
+        latitude,
+        longitude,
+        'custom',
+        'Localização Personalizada',
+        ''
       )
 
-      stationCodes = stateStations.map((s: any) => s.CD_ESTACAO)
-
-      locationInfo = {
-        type: 'state',
-        name: stateInfo.name,
-        code: stateInfo.code,
-        region: stateInfo.region,
-        capital: stateInfo.capital,
-        totalStations: stationCodes.length
+      if (!data) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to fetch weather data'
+        }, { status: 500 })
       }
-    } else if (capitalSlug && BRAZILIAN_CAPITALS[capitalSlug]) {
-      // Buscar estações de uma capital específica
+
+      return NextResponse.json({
+        success: true,
+        data: [data],
+        total: 1,
+        source: 'open-meteo',
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    // Busca por capital específica
+    if (capitalSlug && BRAZILIAN_CAPITALS[capitalSlug]) {
       const capitalInfo = BRAZILIAN_CAPITALS[capitalSlug]
-      stationCodes = capitalInfo.stations
 
-      locationInfo = {
-        type: 'capital',
-        name: capitalInfo.name,
-        state: capitalInfo.state,
-        stateCode: capitalInfo.stateCode,
-        region: capitalInfo.region
-      }
-    } else {
-      // Default: São Paulo
-      const defaultState = 'SP'
-      const stateInfo = BRAZILIAN_STATES[defaultState]
-      allStations = await fetchAllStations()
-
-      const stateStations = allStations.filter((s: any) =>
-        s.SG_ESTADO === defaultState &&
-        s.CD_SITUACAO === 'Operante' &&
-        s.TP_ESTACAO === 'Automatica'
+      const data = await fetchOpenMeteoData(
+        capitalInfo.latitude,
+        capitalInfo.longitude,
+        capitalSlug,
+        capitalInfo.name,
+        capitalInfo.stateCode
       )
 
-      stationCodes = stateStations.map((s: any) => s.CD_ESTACAO)
-
-      locationInfo = {
-        type: 'state',
-        name: stateInfo.name,
-        code: stateInfo.code,
-        region: stateInfo.region,
-        capital: stateInfo.capital,
-        totalStations: stationCodes.length
+      if (!data) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to fetch weather data'
+        }, { status: 500 })
       }
+
+      return NextResponse.json({
+        success: true,
+        data: [data],
+        total: 1,
+        location: {
+          type: 'capital',
+          name: capitalInfo.name,
+          state: capitalInfo.state,
+          stateCode: capitalInfo.stateCode,
+          region: capitalInfo.region
+        },
+        source: 'open-meteo',
+        timestamp: new Date().toISOString()
+      })
     }
 
-    // Criar mapa de metadados das estações
-    const stationMetaMap: Record<string, any> = {}
-    if (allStations.length > 0) {
-      for (const s of allStations) {
-        stationMetaMap[s.CD_ESTACAO] = s
-      }
-    }
+    // Busca por estado - retorna todas as capitais da região
+    if (stateCode && BRAZILIAN_STATES[stateCode]) {
+      const stateInfo = BRAZILIAN_STATES[stateCode]
 
-    const results: WeatherData[] = []
-
-    // Limitar quantidade de estações para não sobrecarregar
-    const maxStations = 20
-    const stationsToFetch = stationCodes.slice(0, maxStations)
-
-    // Buscar em paralelo (com limite)
-    const batchSize = 5
-    let usedFallback = false
-
-    for (let i = 0; i < stationsToFetch.length; i += batchSize) {
-      const batch = stationsToFetch.slice(i, i + batchSize)
-      const batchResults = await Promise.all(
-        batch.map(async (code) => {
-          const rawData = await fetchStationData(code)
-          const processed = processStationData(rawData, code, stationMetaMap[code])
-
-          // Se não há dados da API, usar fallback com dados simulados
-          if (!processed && stationMetaMap[code]) {
-            usedFallback = true
-            return generateFallbackData(code, stationMetaMap[code])
-          }
-          return processed
-        })
+      // Encontrar a capital do estado
+      const capitalEntry = Object.entries(BRAZILIAN_CAPITALS).find(
+        ([, info]) => info.stateCode === stateCode
       )
-      results.push(...batchResults.filter((r): r is WeatherData => r !== null))
+
+      if (!capitalEntry) {
+        return NextResponse.json({
+          success: false,
+          error: 'Capital not found for state'
+        }, { status: 404 })
+      }
+
+      const [slug, capitalInfo] = capitalEntry
+
+      const data = await fetchOpenMeteoData(
+        capitalInfo.latitude,
+        capitalInfo.longitude,
+        slug,
+        capitalInfo.name,
+        capitalInfo.stateCode
+      )
+
+      if (!data) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to fetch weather data'
+        }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: [data],
+        total: 1,
+        location: {
+          type: 'state',
+          name: stateInfo.name,
+          code: stateInfo.code,
+          region: stateInfo.region,
+          capital: stateInfo.capital
+        },
+        source: 'open-meteo',
+        timestamp: new Date().toISOString()
+      })
     }
 
-    // Log de aviso se usando fallback
-    if (usedFallback) {
-      console.warn('Using fallback data - INMET API may be unavailable or no data for current date')
-    }
+    // Default: São Paulo
+    const defaultCapital = BRAZILIAN_CAPITALS['sao-paulo']
+    const data = await fetchOpenMeteoData(
+      defaultCapital.latitude,
+      defaultCapital.longitude,
+      'sao-paulo',
+      defaultCapital.name,
+      defaultCapital.stateCode
+    )
 
-    // Ordenar por nível de alerta (severos primeiro)
-    const alertOrder = { severe: 0, alert: 1, attention: 2, normal: 3 }
-    results.sort((a, b) => alertOrder[a.alertLevel] - alertOrder[b.alertLevel])
+    if (!data) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch weather data'
+      }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      data: results,
-      total: results.length,
-      totalAvailable: stationCodes.length,
-      location: locationInfo,
-      timestamp: new Date().toISOString(),
-      usingFallback: usedFallback,
-      note: usedFallback ? 'Usando dados simulados - API INMET sem dados para data atual' : undefined
+      data: [data],
+      total: 1,
+      location: {
+        type: 'capital',
+        name: defaultCapital.name,
+        state: defaultCapital.state,
+        stateCode: defaultCapital.stateCode,
+        region: defaultCapital.region
+      },
+      source: 'open-meteo',
+      timestamp: new Date().toISOString()
     })
+
   } catch (error) {
     console.error('Error in weather API:', error)
     return NextResponse.json(

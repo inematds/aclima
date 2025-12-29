@@ -11,7 +11,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  Map,
+  ExternalLink
 } from 'lucide-react'
 
 const menuItems = [
@@ -59,6 +61,15 @@ const panelItems = [
     href: '/painel3',
     icon: LayoutDashboard,
     description: 'Estação Climática'
+  },
+]
+
+const externalLinks = [
+  {
+    name: 'Mapa INMET',
+    href: 'https://mapas.inmet.gov.br/',
+    icon: Map,
+    description: 'Mapa interativo do INMET'
   },
 ]
 
@@ -156,6 +167,39 @@ export default function Sidebar() {
               </li>
             )
           })}
+        </ul>
+
+        {/* Links Externos */}
+        {!collapsed && (
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Links Externos
+            </p>
+          </div>
+        )}
+        <ul className="space-y-1 px-2">
+          {externalLinks.map((item) => (
+            <li key={item.href}>
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-300 hover:bg-slate-800 hover:text-white"
+                title={collapsed ? item.name : undefined}
+              >
+                <item.icon size={20} />
+                {!collapsed && (
+                  <div className="flex-1">
+                    <div className="font-medium flex items-center gap-1">
+                      {item.name}
+                      <ExternalLink size={12} className="text-slate-500" />
+                    </div>
+                    <div className="text-xs text-slate-400">{item.description}</div>
+                  </div>
+                )}
+              </a>
+            </li>
+          ))}
         </ul>
       </nav>
 

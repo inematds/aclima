@@ -117,43 +117,45 @@ export interface AlertData {
   rain24h?: number
 }
 
-// Capitais brasileiras com suas estações INMET
+// Capitais brasileiras com coordenadas para Open-Meteo
 export interface CapitalInfo {
   name: string
   state: string
   stateCode: string
   region: string
-  stations: string[] // Códigos das estações INMET na capital
+  latitude: number
+  longitude: number
+  stations: string[] // Códigos das estações INMET (legado)
 }
 
 export const BRAZILIAN_CAPITALS: Record<string, CapitalInfo> = {
-  'rio-branco': { name: 'Rio Branco', state: 'Acre', stateCode: 'AC', region: 'Norte', stations: ['A104'] },
-  'maceio': { name: 'Maceió', state: 'Alagoas', stateCode: 'AL', region: 'Nordeste', stations: ['A303'] },
-  'macapa': { name: 'Macapá', state: 'Amapá', stateCode: 'AP', region: 'Norte', stations: ['A202'] },
-  'manaus': { name: 'Manaus', state: 'Amazonas', stateCode: 'AM', region: 'Norte', stations: ['A101'] },
-  'salvador': { name: 'Salvador', state: 'Bahia', stateCode: 'BA', region: 'Nordeste', stations: ['A401'] },
-  'fortaleza': { name: 'Fortaleza', state: 'Ceará', stateCode: 'CE', region: 'Nordeste', stations: ['A305'] },
-  'brasilia': { name: 'Brasília', state: 'Distrito Federal', stateCode: 'DF', region: 'Centro-Oeste', stations: ['A001'] },
-  'vitoria': { name: 'Vitória', state: 'Espírito Santo', stateCode: 'ES', region: 'Sudeste', stations: ['A612'] },
-  'goiania': { name: 'Goiânia', state: 'Goiás', stateCode: 'GO', region: 'Centro-Oeste', stations: ['A002'] },
-  'sao-luis': { name: 'São Luís', state: 'Maranhão', stateCode: 'MA', region: 'Nordeste', stations: ['A203'] },
-  'cuiaba': { name: 'Cuiabá', state: 'Mato Grosso', stateCode: 'MT', region: 'Centro-Oeste', stations: ['A901'] },
-  'campo-grande': { name: 'Campo Grande', state: 'Mato Grosso do Sul', stateCode: 'MS', region: 'Centro-Oeste', stations: ['A702'] },
-  'belo-horizonte': { name: 'Belo Horizonte', state: 'Minas Gerais', stateCode: 'MG', region: 'Sudeste', stations: ['A521'] },
-  'belem': { name: 'Belém', state: 'Pará', stateCode: 'PA', region: 'Norte', stations: ['A201'] },
-  'joao-pessoa': { name: 'João Pessoa', state: 'Paraíba', stateCode: 'PB', region: 'Nordeste', stations: ['A320'] },
-  'curitiba': { name: 'Curitiba', state: 'Paraná', stateCode: 'PR', region: 'Sul', stations: ['A807'] },
-  'recife': { name: 'Recife', state: 'Pernambuco', stateCode: 'PE', region: 'Nordeste', stations: ['A301'] },
-  'teresina': { name: 'Teresina', state: 'Piauí', stateCode: 'PI', region: 'Nordeste', stations: ['A312'] },
-  'rio-de-janeiro': { name: 'Rio de Janeiro', state: 'Rio de Janeiro', stateCode: 'RJ', region: 'Sudeste', stations: ['A652', 'A621'] },
-  'natal': { name: 'Natal', state: 'Rio Grande do Norte', stateCode: 'RN', region: 'Nordeste', stations: ['A304'] },
-  'porto-alegre': { name: 'Porto Alegre', state: 'Rio Grande do Sul', stateCode: 'RS', region: 'Sul', stations: ['A801'] },
-  'porto-velho': { name: 'Porto Velho', state: 'Rondônia', stateCode: 'RO', region: 'Norte', stations: ['A103'] },
-  'boa-vista': { name: 'Boa Vista', state: 'Roraima', stateCode: 'RR', region: 'Norte', stations: ['A135'] },
-  'florianopolis': { name: 'Florianópolis', state: 'Santa Catarina', stateCode: 'SC', region: 'Sul', stations: ['A806'] },
-  'sao-paulo': { name: 'São Paulo', state: 'São Paulo', stateCode: 'SP', region: 'Sudeste', stations: ['A701', 'A713'] },
-  'aracaju': { name: 'Aracaju', state: 'Sergipe', stateCode: 'SE', region: 'Nordeste', stations: ['A409'] },
-  'palmas': { name: 'Palmas', state: 'Tocantins', stateCode: 'TO', region: 'Norte', stations: ['A009'] },
+  'rio-branco': { name: 'Rio Branco', state: 'Acre', stateCode: 'AC', region: 'Norte', latitude: -9.9754, longitude: -67.8249, stations: ['A104'] },
+  'maceio': { name: 'Maceió', state: 'Alagoas', stateCode: 'AL', region: 'Nordeste', latitude: -9.6498, longitude: -35.7089, stations: ['A303'] },
+  'macapa': { name: 'Macapá', state: 'Amapá', stateCode: 'AP', region: 'Norte', latitude: 0.0356, longitude: -51.0705, stations: ['A202'] },
+  'manaus': { name: 'Manaus', state: 'Amazonas', stateCode: 'AM', region: 'Norte', latitude: -3.1190, longitude: -60.0217, stations: ['A101'] },
+  'salvador': { name: 'Salvador', state: 'Bahia', stateCode: 'BA', region: 'Nordeste', latitude: -12.9714, longitude: -38.5014, stations: ['A401'] },
+  'fortaleza': { name: 'Fortaleza', state: 'Ceará', stateCode: 'CE', region: 'Nordeste', latitude: -3.7172, longitude: -38.5433, stations: ['A305'] },
+  'brasilia': { name: 'Brasília', state: 'Distrito Federal', stateCode: 'DF', region: 'Centro-Oeste', latitude: -15.7801, longitude: -47.9292, stations: ['A001'] },
+  'vitoria': { name: 'Vitória', state: 'Espírito Santo', stateCode: 'ES', region: 'Sudeste', latitude: -20.2976, longitude: -40.2958, stations: ['A612'] },
+  'goiania': { name: 'Goiânia', state: 'Goiás', stateCode: 'GO', region: 'Centro-Oeste', latitude: -16.6869, longitude: -49.2648, stations: ['A002'] },
+  'sao-luis': { name: 'São Luís', state: 'Maranhão', stateCode: 'MA', region: 'Nordeste', latitude: -2.5307, longitude: -44.3068, stations: ['A203'] },
+  'cuiaba': { name: 'Cuiabá', state: 'Mato Grosso', stateCode: 'MT', region: 'Centro-Oeste', latitude: -15.6014, longitude: -56.0979, stations: ['A901'] },
+  'campo-grande': { name: 'Campo Grande', state: 'Mato Grosso do Sul', stateCode: 'MS', region: 'Centro-Oeste', latitude: -20.4697, longitude: -54.6201, stations: ['A702'] },
+  'belo-horizonte': { name: 'Belo Horizonte', state: 'Minas Gerais', stateCode: 'MG', region: 'Sudeste', latitude: -19.9167, longitude: -43.9345, stations: ['A521'] },
+  'belem': { name: 'Belém', state: 'Pará', stateCode: 'PA', region: 'Norte', latitude: -1.4558, longitude: -48.4902, stations: ['A201'] },
+  'joao-pessoa': { name: 'João Pessoa', state: 'Paraíba', stateCode: 'PB', region: 'Nordeste', latitude: -7.1195, longitude: -34.8450, stations: ['A320'] },
+  'curitiba': { name: 'Curitiba', state: 'Paraná', stateCode: 'PR', region: 'Sul', latitude: -25.4290, longitude: -49.2671, stations: ['A807'] },
+  'recife': { name: 'Recife', state: 'Pernambuco', stateCode: 'PE', region: 'Nordeste', latitude: -8.0476, longitude: -34.8770, stations: ['A301'] },
+  'teresina': { name: 'Teresina', state: 'Piauí', stateCode: 'PI', region: 'Nordeste', latitude: -5.0892, longitude: -42.8019, stations: ['A312'] },
+  'rio-de-janeiro': { name: 'Rio de Janeiro', state: 'Rio de Janeiro', stateCode: 'RJ', region: 'Sudeste', latitude: -22.9068, longitude: -43.1729, stations: ['A652', 'A621'] },
+  'natal': { name: 'Natal', state: 'Rio Grande do Norte', stateCode: 'RN', region: 'Nordeste', latitude: -5.7945, longitude: -35.2110, stations: ['A304'] },
+  'porto-alegre': { name: 'Porto Alegre', state: 'Rio Grande do Sul', stateCode: 'RS', region: 'Sul', latitude: -30.0346, longitude: -51.2177, stations: ['A801'] },
+  'porto-velho': { name: 'Porto Velho', state: 'Rondônia', stateCode: 'RO', region: 'Norte', latitude: -8.7612, longitude: -63.9004, stations: ['A103'] },
+  'boa-vista': { name: 'Boa Vista', state: 'Roraima', stateCode: 'RR', region: 'Norte', latitude: 2.8235, longitude: -60.6758, stations: ['A135'] },
+  'florianopolis': { name: 'Florianópolis', state: 'Santa Catarina', stateCode: 'SC', region: 'Sul', latitude: -27.5954, longitude: -48.5480, stations: ['A806'] },
+  'sao-paulo': { name: 'São Paulo', state: 'São Paulo', stateCode: 'SP', region: 'Sudeste', latitude: -23.5505, longitude: -46.6333, stations: ['A701', 'A713'] },
+  'aracaju': { name: 'Aracaju', state: 'Sergipe', stateCode: 'SE', region: 'Nordeste', latitude: -10.9472, longitude: -37.0731, stations: ['A409'] },
+  'palmas': { name: 'Palmas', state: 'Tocantins', stateCode: 'TO', region: 'Norte', latitude: -10.2491, longitude: -48.3243, stations: ['A009'] },
 }
 
 // Mapeamento de código de estação para informações
