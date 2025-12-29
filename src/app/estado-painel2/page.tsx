@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
 import { useStateWeather, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -207,53 +208,14 @@ export default function EstadoPainel2Page() {
                 </div>
               </div>
 
-              {/* Mapa Placeholder */}
-              <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 relative p-4">
-                {stationsWithAlerts.length === 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <Shield className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                      <p className="text-sm font-medium text-green-600">Sem alertas ativos</p>
-                      <p className="text-xs">Todas as {weatherData.length} estações estão normais</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {stationsWithAlerts.slice(0, 10).map((station, i) => {
-                      const level = getAlertLevel(station.alertLevel)
-                      const config = alertLevelConfig[level]
-                      // Posições pseudo-aleatórias baseadas no índice
-                      const row = Math.floor(i / 3)
-                      const col = i % 3
-                      const top = 15 + row * 25 + (i % 2) * 10
-                      const left = 15 + col * 25 + (i % 3) * 5
-
-                      return (
-                        <button
-                          key={station.stationId}
-                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${
-                            selectedStation === station.stationId ? 'z-10 scale-125' : ''
-                          } transition-transform`}
-                          style={{ top: `${top}%`, left: `${left}%` }}
-                          onClick={() => setSelectedStation(station.stationId)}
-                        >
-                          <div className={`p-2 rounded-full ${config.bg} border-2 ${config.border} shadow-lg`}>
-                            <config.icon className={`h-5 w-5 ${config.color}`} />
-                          </div>
-                          {station.alertLevel === 'severe' && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                    <div className="absolute bottom-4 left-4 bg-white/90 rounded-lg p-2 text-xs text-gray-500">
-                      <p>Mostrando {Math.min(10, stationsWithAlerts.length)} de {stationsWithAlerts.length} alertas</p>
-                    </div>
-                  </>
-                )}
+              {/* Mapa */}
+              <div className="flex-1">
+                <WeatherMapDynamic
+                  stations={weatherData}
+                  selectedStation={selectedStation}
+                  onStationSelect={setSelectedStation}
+                  className="h-full"
+                />
               </div>
             </div>
 

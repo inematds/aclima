@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
 import { useStateWeather, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -333,6 +334,21 @@ export default function EstadoPainel3Page() {
 
           {/* Status e Resumo */}
           <div className="col-span-3 flex flex-col gap-4">
+            {/* Mapa */}
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden flex-1">
+              <div className="p-2 border-b bg-gray-50">
+                <h3 className="font-semibold text-gray-900 text-sm">Mapa - {stateInfo?.name}</h3>
+              </div>
+              <div className="h-[200px]">
+                <WeatherMapDynamic
+                  stations={weatherData}
+                  selectedStation={selectedStation}
+                  onStationSelect={setSelectedStation}
+                  className="h-full"
+                />
+              </div>
+            </div>
+
             {/* Resumo do Estado */}
             <div className="bg-white rounded-lg shadow-sm border p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Resumo - {stateInfo?.name}</h3>

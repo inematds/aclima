@@ -2,17 +2,15 @@
 
 import { useState } from 'react'
 import {
-  MapPin,
   Droplets,
-  Clock,
   TrendingUp,
-  TrendingDown,
   Minus,
   AlertTriangle,
   RefreshCw,
   Loader2
 } from 'lucide-react'
 import StateSelector from '@/components/StateSelector'
+import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
 import { useStateWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -305,18 +303,18 @@ export default function EstadoPainel1Page() {
 
             {/* Coluna 3: Mapa e Alertas */}
             <div className="col-span-3 flex flex-col gap-4">
-              {/* Mapa Placeholder */}
+              {/* Mapa */}
               <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
                 <div className="p-3 border-b bg-gray-50">
                   <h3 className="font-semibold text-gray-900">Mapa - {stateInfo?.name}</h3>
                 </div>
-                <div className="h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center p-4">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">{weatherData.length} estações</p>
-                    <p className="text-xs">distribuídas pelo estado</p>
-                    <p className="text-xs mt-2">(Mapa em desenvolvimento)</p>
-                  </div>
+                <div className="h-[calc(100%-48px)]">
+                  <WeatherMapDynamic
+                    stations={weatherData}
+                    selectedStation={selectedStation}
+                    onStationSelect={setSelectedStation}
+                    className="h-full"
+                  />
                 </div>
               </div>
 

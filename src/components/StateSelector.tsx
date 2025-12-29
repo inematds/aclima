@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { MapPin, ChevronDown, Search, Loader2, AlertCircle } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { MapPin, ChevronDown, Search, Loader2 } from 'lucide-react'
 import { BRAZILIAN_STATES, type StateCode } from '@/types/weather'
 
 interface StateSelectorProps {
@@ -10,60 +10,9 @@ interface StateSelectorProps {
   loading?: boolean
 }
 
-interface StateWithData {
-  code: StateCode
-  name: string
-  region: string
-  capital: string
-  hasData?: boolean
-  stationCount?: number
-}
-
 export default function StateSelector({ selectedState, onSelect, loading }: StateSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [statesData, setStatesData] = useState<Record<string, { hasData: boolean; stationCount: number }>>({})
-  const [checkingStates, setCheckingStates] = useState(false)
-
-  // Verificar quais estados têm dados ao abrir o dropdown
-  useEffect(() => {
-    if (isOpen && Object.keys(statesData).length === 0) {
-      checkAllStates()
-    }
-  }, [isOpen])
-
-  const checkAllStates = async () => {
-    setCheckingStates(true)
-    const results: Record<string, { hasData: boolean; stationCount: number }> = {}
-
-    // Verificar estados em paralelo (em batches para não sobrecarregar)
-    const stateCodes = Object.keys(BRAZILIAN_STATES) as StateCode[]
-    const batchSize = 5
-
-    for (let i = 0; i < stateCodes.length; i += batchSize) {
-      const batch = stateCodes.slice(i, i + batchSize)
-      const batchResults = await Promise.all(
-        batch.map(async (code) => {
-          try {
-            const response = await fetch(`/api/weather?checkState=${code}`)
-            const data = await response.json()
-            return { code, hasData: data.hasData, stationCount: data.stationCount }
-          } catch {
-            return { code, hasData: false, stationCount: 0 }
-          }
-        })
-      )
-
-      for (const result of batchResults) {
-        results[result.code] = { hasData: result.hasData, stationCount: result.stationCount }
-      }
-
-      // Atualizar parcialmente para feedback visual
-      setStatesData(prev => ({ ...prev, ...results }))
-    }
-
-    setCheckingStates(false)
-  }
 
   const statesList = useMemo(() => {
     return Object.entries(BRAZILIAN_STATES)
@@ -71,12 +20,10 @@ export default function StateSelector({ selectedState, onSelect, loading }: Stat
         code: stateCode as StateCode,
         name: info.name,
         region: info.region,
-        capital: info.capital,
-        hasData: statesData[stateCode]?.hasData,
-        stationCount: statesData[stateCode]?.stationCount
+        capital: info.capital
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-  }, [statesData])
+  }, [])
 
   const filteredStates = useMemo(() => {
     if (!search) return statesList
@@ -101,7 +48,6 @@ export default function StateSelector({ selectedState, onSelect, loading }: Stat
 
   const regionOrder = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul']
   const selectedInfo = BRAZILIAN_STATES[selectedState]
-  const selectedData = statesData[selectedState]
 
   return (
     <div className="relative">
@@ -143,12 +89,6 @@ export default function StateSelector({ selectedState, onSelect, loading }: Stat
                   autoFocus
                 />
               </div>
-              {checkingStates && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Verificando disponibilidade de dados...
-                </div>
-              )}
             </div>
 
             {/* List */}
@@ -162,62 +102,36 @@ export default function StateSelector({ selectedState, onSelect, loading }: Stat
                     <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0">
                       {region}
                     </div>
-                    {states.map(state => {
-                      const hasDataInfo = statesData[state.code]
-                      const isDisabled = hasDataInfo && !hasDataInfo.hasData
-
-                      return (
-                        <button
-                          key={state.code}
-                          onClick={() => {
-                            if (!isDisabled) {
-                              onSelect(state.code)
-                              setIsOpen(false)
-                              setSearch('')
-                            }
-                          }}
-                          disabled={isDisabled}
-                          className={`w-full px-4 py-2.5 flex items-center justify-between transition-colors ${
-                            state.code === selectedState ? 'bg-blue-50' : ''
-                          } ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-blue-50'}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <MapPin className={`w-4 h-4 ${
-                              isDisabled ? 'text-gray-300' :
-                              state.code === selectedState ? 'text-blue-600' : 'text-gray-400'
-                            }`} />
-                            <div className="text-left">
-                              <span className={`font-medium ${
-                                isDisabled ? 'text-gray-400' :
-                                state.code === selectedState ? 'text-blue-600' : 'text-gray-900'
-                              }`}>
-                                {state.name}
-                              </span>
-                              <span className="text-xs text-gray-400 ml-2">
-                                Capital: {state.capital}
-                              </span>
-                            </div>
+                    {states.map(state => (
+                      <button
+                        key={state.code}
+                        onClick={() => {
+                          onSelect(state.code)
+                          setIsOpen(false)
+                          setSearch('')
+                        }}
+                        className={`w-full px-4 py-2.5 flex items-center justify-between transition-colors hover:bg-blue-50 ${
+                          state.code === selectedState ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin className={`w-4 h-4 ${
+                            state.code === selectedState ? 'text-blue-600' : 'text-gray-400'
+                          }`} />
+                          <div className="text-left">
+                            <span className={`font-medium ${
+                              state.code === selectedState ? 'text-blue-600' : 'text-gray-900'
+                            }`}>
+                              {state.name}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-2">
+                              Capital: {state.capital}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {hasDataInfo ? (
-                              hasDataInfo.hasData ? (
-                                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                                  {hasDataInfo.stationCount} estações
-                                </span>
-                              ) : (
-                                <span className="text-xs text-red-500 flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" />
-                                  Sem dados
-                                </span>
-                              )
-                            ) : checkingStates ? (
-                              <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
-                            ) : null}
-                            <span className="text-sm text-gray-500">{state.code}</span>
-                          </div>
-                        </button>
-                      )
-                    })}
+                        </div>
+                        <span className="text-sm text-gray-500">{state.code}</span>
+                      </button>
+                    ))}
                   </div>
                 )
               })}
