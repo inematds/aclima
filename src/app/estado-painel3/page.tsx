@@ -477,13 +477,16 @@ export default function EstadoPainel3Page() {
             </div>
           </div>
 
-          {/* Mapas de Previsão */}
-          <div className="col-span-12 mt-4">
-            <ForecastMapsDynamic
-              latitude={capitalCoords.lat}
-              longitude={capitalCoords.lng}
-            />
-          </div>
+        </div>
+      )}
+
+      {/* Mapas de Previsão */}
+      {weatherData.length > 0 && (
+        <div className="mt-4">
+          <ForecastMapsDynamic
+            latitude={capitalCoords.lat}
+            longitude={capitalCoords.lng}
+          />
         </div>
       )}
 

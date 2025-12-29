@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  CloudRain,
-  Thermometer,
-  Cloud,
   Radio,
   Play,
   Pause,
@@ -27,43 +24,10 @@ interface RainViewerData {
   host: string
 }
 
-type MapLayer = 'radar' | 'precipitation' | 'temperature' | 'clouds'
-
 interface ForecastMapsProps {
   latitude?: number
   longitude?: number
   className?: string
-}
-
-const layerConfig: Record<MapLayer, {
-  icon: typeof CloudRain
-  label: string
-  color: string
-  owmLayer?: string
-}> = {
-  radar: {
-    icon: Radio,
-    label: 'Radar',
-    color: 'text-green-600 bg-green-50 border-green-200'
-  },
-  precipitation: {
-    icon: CloudRain,
-    label: 'Precipitação',
-    color: 'text-blue-600 bg-blue-50 border-blue-200',
-    owmLayer: 'precipitation_new'
-  },
-  temperature: {
-    icon: Thermometer,
-    label: 'Temperatura',
-    color: 'text-red-600 bg-red-50 border-red-200',
-    owmLayer: 'temp_new'
-  },
-  clouds: {
-    icon: Cloud,
-    label: 'Nuvens',
-    color: 'text-gray-600 bg-gray-50 border-gray-200',
-    owmLayer: 'clouds_new'
-  }
 }
 
 export default function ForecastMaps({
@@ -71,7 +35,6 @@ export default function ForecastMaps({
   longitude = -46.6333,
   className = ''
 }: ForecastMapsProps) {
-  const [activeLayer, setActiveLayer] = useState<MapLayer>('radar')
   const [rainViewerData, setRainViewerData] = useState<RainViewerData | null>(null)
   const [currentFrame, setCurrentFrame] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -129,19 +92,6 @@ export default function ForecastMaps({
   const tileX = Math.floor((longitude + 180) / 360 * Math.pow(2, zoom))
   const tileY = Math.floor((1 - Math.log(Math.tan(latitude * Math.PI / 180) + 1 / Math.cos(latitude * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom))
 
-  // Generate tile URL
-  const getRadarTileUrl = () => {
-    if (!rainViewerData || !currentFrameData) return null
-    return `${rainViewerData.host}${currentFrameData.path}/256/${zoom}/${tileX}/${tileY}/2/1_1.png`
-  }
-
-  // Get OpenWeatherMap tile URL (requires API key)
-  const getOwmTileUrl = (layer: string) => {
-    const apiKey = process.env.NEXT_PUBLIC_OWM_API_KEY
-    if (!apiKey) return null
-    return `https://tile.openweathermap.org/map/${layer}/${zoom}/${tileX}/${tileY}.png?appid=${apiKey}`
-  }
-
   // Generate a larger map view (3x3 tiles)
   const getTileGrid = () => {
     const tiles = []
@@ -176,7 +126,10 @@ export default function ForecastMaps({
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       {/* Header */}
       <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Mapas de Previsão</h3>
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-green-600" />
+          <h3 className="font-semibold text-gray-900">Radar de Precipitação</h3>
+        </div>
         <button
           onClick={fetchRainViewerData}
           disabled={loading}
@@ -185,35 +138,6 @@ export default function ForecastMaps({
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
-      </div>
-
-      {/* Layer selector */}
-      <div className="p-2 border-b flex gap-1 overflow-x-auto">
-        {(Object.keys(layerConfig) as MapLayer[]).map(layer => {
-          const config = layerConfig[layer]
-          const Icon = config.icon
-          const isActive = activeLayer === layer
-          const isDisabled = layer !== 'radar' && !process.env.NEXT_PUBLIC_OWM_API_KEY
-
-          return (
-            <button
-              key={layer}
-              onClick={() => !isDisabled && setActiveLayer(layer)}
-              disabled={isDisabled}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
-                isActive
-                  ? config.color
-                  : isDisabled
-                  ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                  : 'text-gray-600 bg-white border-gray-200 hover:bg-gray-50'
-              }`}
-              title={isDisabled ? 'Requer API key do OpenWeatherMap' : config.label}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {config.label}
-            </button>
-          )
-        })}
       </div>
 
       {/* Map view */}
@@ -238,7 +162,7 @@ export default function ForecastMaps({
           <>
             {/* Base map (OpenStreetMap) */}
             <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-              {getTileGrid().map(({ x, y, dx, dy }) => (
+              {getTileGrid().map(({ x, y }) => (
                 <div key={`${x}-${y}`} className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -251,8 +175,8 @@ export default function ForecastMaps({
               ))}
             </div>
 
-            {/* Weather overlay */}
-            {activeLayer === 'radar' && rainViewerData && currentFrameData && (
+            {/* Radar overlay */}
+            {rainViewerData && currentFrameData && (
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
                 {getTileGrid().map(({ x, y }) => (
                   <div key={`radar-${x}-${y}`} className="relative">
@@ -271,37 +195,13 @@ export default function ForecastMaps({
               </div>
             )}
 
-            {activeLayer !== 'radar' && layerConfig[activeLayer].owmLayer && (
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-                {getTileGrid().map(({ x, y }) => {
-                  const url = getOwmTileUrl(layerConfig[activeLayer].owmLayer!)
-                  if (!url) return null
-                  const tileUrl = url.replace(`/${tileX}/`, `/${x}/`).replace(`/${tileY}/`, `/${y}/`)
-                  return (
-                    <div key={`owm-${x}-${y}`} className="relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={tileUrl}
-                        alt=""
-                        className="w-full h-full object-cover opacity-80"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
             {/* Center marker */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-lg" />
             </div>
 
             {/* Timestamp badge */}
-            {activeLayer === 'radar' && currentFrameData && (
+            {currentFrameData && (
               <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                 {formatTime(currentFrameData.time)}
                 <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
@@ -314,40 +214,20 @@ export default function ForecastMaps({
 
             {/* Legend */}
             <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">
-              {activeLayer === 'radar' && (
-                <div className="flex items-center gap-1">
-                  <span>Fraco</span>
-                  <div className="w-16 h-2 rounded" style={{
-                    background: 'linear-gradient(to right, #00ff00, #ffff00, #ff9900, #ff0000, #ff00ff)'
-                  }} />
-                  <span>Forte</span>
-                </div>
-              )}
-              {activeLayer === 'temperature' && (
-                <div className="flex items-center gap-1">
-                  <span>Frio</span>
-                  <div className="w-16 h-2 rounded" style={{
-                    background: 'linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000)'
-                  }} />
-                  <span>Quente</span>
-                </div>
-              )}
-              {activeLayer === 'clouds' && (
-                <div className="flex items-center gap-1">
-                  <span>Limpo</span>
-                  <div className="w-16 h-2 rounded" style={{
-                    background: 'linear-gradient(to right, transparent, #ffffff)'
-                  }} />
-                  <span>Nublado</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <span>Fraco</span>
+                <div className="w-16 h-2 rounded" style={{
+                  background: 'linear-gradient(to right, #00ff00, #ffff00, #ff9900, #ff0000, #ff00ff)'
+                }} />
+                <span>Forte</span>
+              </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Radar timeline controls */}
-      {activeLayer === 'radar' && allFrames.length > 0 && (
+      {/* Timeline controls */}
+      {allFrames.length > 0 && (
         <div className="p-3 border-t">
           <div className="flex items-center gap-3">
             <button
@@ -395,16 +275,9 @@ export default function ForecastMaps({
         </div>
       )}
 
-      {/* Info about OWM API key */}
-      {activeLayer !== 'radar' && !process.env.NEXT_PUBLIC_OWM_API_KEY && (
-        <div className="p-3 border-t bg-yellow-50 text-yellow-800 text-xs">
-          Para visualizar mapas de {layerConfig[activeLayer].label.toLowerCase()}, adicione NEXT_PUBLIC_OWM_API_KEY no .env.local
-        </div>
-      )}
-
       {/* Source */}
       <div className="px-3 py-2 border-t bg-gray-50 text-[10px] text-gray-400 text-center">
-        Fonte: RainViewer (radar) | OpenWeatherMap (outros) | OpenStreetMap (mapa base)
+        Fonte: RainViewer (radar) | OpenStreetMap (mapa base)
       </div>
     </div>
   )

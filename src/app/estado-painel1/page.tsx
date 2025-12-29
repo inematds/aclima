@@ -416,14 +416,6 @@ export default function EstadoPainel1Page() {
             </div>
           </div>
 
-          {/* Mapas de Previsão */}
-          <div className="mt-4">
-            <ForecastMapsDynamic
-              latitude={capitalCoords.lat}
-              longitude={capitalCoords.lng}
-            />
-          </div>
-
           {/* Legenda */}
           <div className="mt-4 flex items-center justify-center gap-6 text-xs text-gray-500">
             <div className="flex items-center gap-2">
@@ -446,6 +438,16 @@ export default function EstadoPainel1Page() {
             <span>Fonte: Estações INMET + Open-Meteo</span>
           </div>
         </>
+      )}
+
+      {/* Mapas de Previsão */}
+      {weatherData.length > 0 && (
+        <div className="mt-4">
+          <ForecastMapsDynamic
+            latitude={capitalCoords.lat}
+            longitude={capitalCoords.lng}
+          />
+        </div>
       )}
     </div>
   )
