@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import StateSelector from './StateSelector'
@@ -37,6 +37,19 @@ const statusColors = {
   offline: 'text-red-500',
 }
 
+// Função para calcular distância entre dois pontos (Haversine)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // Raio da Terra em km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
 interface GeoResult {
   name: string
   state: string
@@ -54,6 +67,10 @@ interface SearchedWeather {
   rain: number
   rain1h: number
   rain24h: number
+}
+
+interface StationWithDistance extends WeatherData {
+  distance: number
 }
 
 export default function WeatherDashboard() {
@@ -200,6 +217,33 @@ export default function WeatherDashboard() {
       ? weatherData.reduce((sum, w) => sum + w.temperature.current, 0) / weatherData.length
       : 0,
   }
+
+  // Calcular estações com distância e ordenar por proximidade
+  const NEARBY_RADIUS_KM = 150 // Raio para considerar estações próximas
+
+  const stationsWithDistance = useMemo((): StationWithDistance[] => {
+    return weatherData.map(station => ({
+      ...station,
+      distance: calculateDistance(
+        effectiveCoords.lat,
+        effectiveCoords.lng,
+        station.coordinates.lat,
+        station.coordinates.lng
+      )
+    })).sort((a, b) => a.distance - b.distance)
+  }, [weatherData, effectiveCoords.lat, effectiveCoords.lng])
+
+  // Estações filtradas: quando cidade selecionada, mostrar apenas próximas
+  const displayedStations = useMemo(() => {
+    if (selectedCity) {
+      // Quando cidade selecionada, mostrar estações próximas (até 150km)
+      const nearby = stationsWithDistance.filter(s => s.distance <= NEARBY_RADIUS_KM)
+      // Se não houver estações próximas, mostrar as 5 mais próximas
+      return nearby.length > 0 ? nearby : stationsWithDistance.slice(0, 5)
+    }
+    // Sem cidade selecionada, mostrar todas ordenadas por distância da capital
+    return stationsWithDistance
+  }, [stationsWithDistance, selectedCity])
 
   // Loading inicial (geolocalização + dados)
   if (geolocation.loading) {
@@ -487,12 +531,18 @@ export default function WeatherDashboard() {
           {/* Mapa das Estações */}
           <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
             <div className="p-3 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-900">Mapa das Estações - {stateInfo?.name}</h3>
-              <p className="text-xs text-gray-500">{weatherData.length} estações INMET</p>
+              <h3 className="font-semibold text-gray-900">
+                Mapa das Estações - {selectedCity ? selectedCity.name : stateInfo?.name}
+              </h3>
+              <p className="text-xs text-gray-500">
+                {selectedCity
+                  ? `${displayedStations.length} estações próximas`
+                  : `${weatherData.length} estações INMET`}
+              </p>
             </div>
             <div className="h-[300px]">
               <WeatherMapDynamic
-                stations={weatherData}
+                stations={displayedStations}
                 selectedStation={selectedStation}
                 onStationSelect={setSelectedStation}
                 center={[effectiveCoords.lat, effectiveCoords.lng]}
@@ -520,25 +570,45 @@ export default function WeatherDashboard() {
 
       {/* Lista de estações */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Estações Monitoradas em {stateInfo?.name} ({weatherData.length})
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {selectedCity
+                ? `Estações Próximas de ${selectedCity.name}`
+                : `Estações Monitoradas em ${stateInfo?.name}`}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {selectedCity
+                ? `${displayedStations.length} estações dentro de ${NEARBY_RADIUS_KM}km (de ${weatherData.length} no estado)`
+                : `${weatherData.length} estações ordenadas por proximidade`}
+            </p>
+          </div>
+          {selectedCity && displayedStations.length < weatherData.length && (
+            <button
+              onClick={clearCitySelection}
+              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              Ver todas
+            </button>
+          )}
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="text-left text-sm text-gray-500 border-b">
                 <th className="pb-3 font-medium">Estação</th>
+                <th className="pb-3 font-medium text-center">Distância</th>
                 <th className="pb-3 font-medium text-center">Agora</th>
                 <th className="pb-3 font-medium text-center">1h</th>
                 <th className="pb-3 font-medium text-center">24h</th>
                 <th className="pb-3 font-medium text-center">Temp</th>
                 <th className="pb-3 font-medium text-center">Status</th>
-                <th className="pb-3 font-medium text-center">Atualização</th>
               </tr>
             </thead>
             <tbody>
-              {weatherData.map((station) => {
+              {displayedStations.map((station) => {
                 const colors = alertColors[station.alertLevel]
 
                 return (
@@ -557,6 +627,15 @@ export default function WeatherDashboard() {
                           <p className="text-xs text-gray-400">{station.stationId}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-3 text-center">
+                      <span className={`text-sm font-medium ${
+                        station.distance <= 50 ? 'text-green-600' :
+                        station.distance <= 100 ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`}>
+                        {station.distance.toFixed(0)} km
+                      </span>
                     </td>
                     <td className="py-3 text-center">
                       <span className="font-semibold">{station.rain.current}</span>
@@ -578,11 +657,6 @@ export default function WeatherDashboard() {
                          station.alertLevel === 'alert' ? 'Alerta' : 'Severo'}
                       </span>
                     </td>
-                    <td className="py-3 text-center">
-                      <span className={`text-sm ${statusColors[station.status]}`}>
-                        {formatTimeAgo(station.timestamp)}
-                      </span>
-                    </td>
                   </tr>
                 )
               })}
@@ -590,10 +664,10 @@ export default function WeatherDashboard() {
           </table>
         </div>
 
-        {weatherData.length === 0 && !weatherLoading && (
+        {displayedStations.length === 0 && !weatherLoading && (
           <div className="text-center py-8 text-gray-500">
             <MapPin className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-            <p>Nenhuma estação encontrada em {stateInfo?.name}</p>
+            <p>Nenhuma estação encontrada {selectedCity ? `próxima de ${selectedCity.name}` : `em ${stateInfo?.name}`}</p>
           </div>
         )}
       </div>
