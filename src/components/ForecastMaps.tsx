@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   CloudRain,
   Thermometer,
@@ -77,6 +79,11 @@ export default function ForecastMaps({
   longitude = -46.6333,
   className = ''
 }: ForecastMapsProps) {
+  const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<L.Map | null>(null)
+  const radarLayerRef = useRef<L.TileLayer | null>(null)
+  const owmLayerRef = useRef<L.TileLayer | null>(null)
+
   const [activeLayer, setActiveLayer] = useState<MapLayer>('radar')
   const [rainViewerData, setRainViewerData] = useState<RainViewerData | null>(null)
   const [currentFrame, setCurrentFrame] = useState(0)
@@ -84,7 +91,6 @@ export default function ForecastMaps({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // NEXT_PUBLIC_ variables are inlined at build time
   const owmApiKey = process.env.NEXT_PUBLIC_OWM_API_KEY || ''
   const hasOwmKey = owmApiKey.length > 0
 
@@ -97,7 +103,6 @@ export default function ForecastMaps({
       if (!response.ok) throw new Error('Failed to fetch radar data')
       const data = await response.json()
       setRainViewerData(data)
-      // Set to latest frame
       const allFrames = [...(data.radar?.past || []), ...(data.radar?.nowcast || [])]
       setCurrentFrame(Math.max(0, allFrames.length - 1))
     } catch (err) {
@@ -110,10 +115,118 @@ export default function ForecastMaps({
 
   useEffect(() => {
     fetchRainViewerData()
-    // Refresh every 10 minutes
     const interval = setInterval(fetchRainViewerData, 10 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchRainViewerData])
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+
+    const map = L.map(mapRef.current, {
+      center: [latitude, longitude],
+      zoom: 6,
+      zoomControl: true,
+      attributionControl: true,
+    })
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18,
+      opacity: 0.7,
+    }).addTo(map)
+
+    // Add center marker
+    L.circleMarker([latitude, longitude], {
+      radius: 6,
+      fillColor: '#ef4444',
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 1,
+    }).addTo(map)
+
+    mapInstanceRef.current = map
+
+    return () => {
+      map.remove()
+      mapInstanceRef.current = null
+    }
+  }, [latitude, longitude])
+
+  // Update radar layer when frame changes
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !rainViewerData || activeLayer !== 'radar') return
+
+    const allFrames = [...(rainViewerData.radar?.past || []), ...(rainViewerData.radar?.nowcast || [])]
+    const frameData = allFrames[currentFrame]
+    if (!frameData) return
+
+    // Remove existing radar layer
+    if (radarLayerRef.current) {
+      map.removeLayer(radarLayerRef.current)
+    }
+
+    // Add new radar layer
+    const radarLayer = L.tileLayer(
+      `${rainViewerData.host}${frameData.path}/256/{z}/{x}/{y}/2/1_1.png`,
+      {
+        opacity: 0.8,
+        maxZoom: 18,
+      }
+    )
+    radarLayer.addTo(map)
+    radarLayerRef.current = radarLayer
+  }, [rainViewerData, currentFrame, activeLayer])
+
+  // Update OWM layer when active layer changes
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    // Remove existing OWM layer
+    if (owmLayerRef.current) {
+      map.removeLayer(owmLayerRef.current)
+      owmLayerRef.current = null
+    }
+
+    // Remove radar layer if switching away
+    if (activeLayer !== 'radar' && radarLayerRef.current) {
+      map.removeLayer(radarLayerRef.current)
+      radarLayerRef.current = null
+    }
+
+    // Add OWM layer if needed
+    if (activeLayer !== 'radar' && hasOwmKey && layerConfig[activeLayer].owmLayer) {
+      const owmLayer = L.tileLayer(
+        `https://tile.openweathermap.org/map/${layerConfig[activeLayer].owmLayer}/{z}/{x}/{y}.png?appid=${owmApiKey}`,
+        {
+          opacity: 0.8,
+          maxZoom: 18,
+        }
+      )
+      owmLayer.addTo(map)
+      owmLayerRef.current = owmLayer
+    }
+
+    // Re-add radar layer if switching back to radar
+    if (activeLayer === 'radar' && rainViewerData) {
+      const allFrames = [...(rainViewerData.radar?.past || []), ...(rainViewerData.radar?.nowcast || [])]
+      const frameData = allFrames[currentFrame]
+      if (frameData) {
+        const radarLayer = L.tileLayer(
+          `${rainViewerData.host}${frameData.path}/256/{z}/{x}/{y}/2/1_1.png`,
+          {
+            opacity: 0.8,
+            maxZoom: 18,
+          }
+        )
+        radarLayer.addTo(map)
+        radarLayerRef.current = radarLayer
+      }
+    }
+  }, [activeLayer, hasOwmKey, owmApiKey, rainViewerData, currentFrame])
 
   // Animation control
   useEffect(() => {
@@ -133,30 +246,6 @@ export default function ForecastMaps({
 
   const currentFrameData = allFrames[currentFrame]
   const isPastFrame = rainViewerData && currentFrame < (rainViewerData.radar?.past?.length || 0)
-
-  // Calculate tile coordinates for the location
-  const zoom = 6
-  const tileX = Math.floor((longitude + 180) / 360 * Math.pow(2, zoom))
-  const tileY = Math.floor((1 - Math.log(Math.tan(latitude * Math.PI / 180) + 1 / Math.cos(latitude * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom))
-
-  // Get OpenWeatherMap tile URL
-  const getOwmTileUrl = (layer: string, x: number, y: number) => {
-    if (!owmApiKey) return null
-    return `https://tile.openweathermap.org/map/${layer}/${zoom}/${x}/${y}.png?appid=${owmApiKey}`
-  }
-
-  // Generate a larger map view (3x3 tiles)
-  const getTileGrid = () => {
-    const tiles = []
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const x = tileX + dx
-        const y = tileY + dy
-        tiles.push({ x, y, dx, dy })
-      }
-    }
-    return tiles
-  }
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString('pt-BR', {
@@ -234,15 +323,15 @@ export default function ForecastMaps({
       </div>
 
       {/* Map view */}
-      <div className="relative bg-gray-900 overflow-hidden" style={{ aspectRatio: '1/1', maxHeight: '400px' }}>
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative" style={{ height: '400px' }}>
+        {loading && !mapInstanceRef.current ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         ) : error ? (
-          <div className="absolute inset-0 flex items-center justify-center text-center p-4">
+          <div className="absolute inset-0 flex items-center justify-center text-center p-4 bg-gray-100">
             <div>
-              <p className="text-red-400 mb-2">{error}</p>
+              <p className="text-red-500 mb-2">{error}</p>
               <button
                 onClick={fetchRainViewerData}
                 className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
@@ -253,90 +342,11 @@ export default function ForecastMaps({
           </div>
         ) : (
           <>
-            {/* Base map (OpenStreetMap) */}
-            <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-              {getTileGrid().map(({ x, y }) => (
-                <div key={`base-${x}-${y}`} className="relative overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`}
-                    alt=""
-                    className="w-full h-full opacity-70"
-                    style={{ display: 'block' }}
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Radar overlay (RainViewer) */}
-            {activeLayer === 'radar' && rainViewerData && currentFrameData && (
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-                {getTileGrid().map(({ x, y }) => (
-                  <div key={`radar-${x}-${y}`} className="relative overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`${rainViewerData.host}${currentFrameData.path}/256/${zoom}/${x}/${y}/2/1_1.png`}
-                      alt=""
-                      className="w-full h-full"
-                      style={{ display: 'block' }}
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* OpenWeatherMap layers */}
-            {activeLayer !== 'radar' && layerConfig[activeLayer].owmLayer && hasOwmKey && (
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-                {getTileGrid().map(({ x, y }) => {
-                  const url = getOwmTileUrl(layerConfig[activeLayer].owmLayer!, x, y)
-                  if (!url) return null
-                  return (
-                    <div key={`owm-${x}-${y}`} className="relative overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt=""
-                        className="w-full h-full"
-                        style={{ display: 'block' }}
-                        loading="lazy"
-                        onError={(e) => {
-                          console.error('OWM tile error:', url)
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Message if no OWM key */}
-            {activeLayer !== 'radar' && !hasOwmKey && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <div className="bg-white rounded-lg p-4 text-center max-w-sm mx-4">
-                  <Lock className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-                  <p className="text-gray-700 font-medium">Chave API não configurada</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Configure NEXT_PUBLIC_OWM_API_KEY no Vercel para usar esta camada
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Center marker */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-lg" />
-            </div>
+            <div ref={mapRef} className="w-full h-full" />
 
             {/* Timestamp badge (radar only) */}
             {activeLayer === 'radar' && currentFrameData && (
-              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded z-[1000]">
                 {formatTime(currentFrameData.time)}
                 <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
                   isPastFrame ? 'bg-blue-500' : 'bg-orange-500'
@@ -348,13 +358,26 @@ export default function ForecastMaps({
 
             {/* Layer info badge (non-radar) */}
             {activeLayer !== 'radar' && (
-              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded z-[1000]">
                 {layerConfig[activeLayer].label} - Tempo real
               </div>
             )}
 
+            {/* Message if no OWM key */}
+            {activeLayer !== 'radar' && !hasOwmKey && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-[1000]">
+                <div className="bg-white rounded-lg p-4 text-center max-w-sm mx-4">
+                  <Lock className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-gray-700 font-medium">Chave API não configurada</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configure NEXT_PUBLIC_OWM_API_KEY no Vercel para usar esta camada
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Legend */}
-            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">
+            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded z-[1000]">
               {activeLayer === 'radar' && (
                 <div className="flex items-center gap-1">
                   <span>Fraco</span>
