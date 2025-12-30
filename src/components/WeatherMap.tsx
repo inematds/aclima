@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { Maximize2, Minimize2, GripVertical } from 'lucide-react'
 import type { WeatherData } from '@/types/weather'
 
 interface WeatherMapProps {
@@ -28,6 +29,11 @@ const ALERT_LABELS = {
   severe: 'Severo',
 }
 
+interface DraggablePosition {
+  x: number
+  y: number
+}
+
 export default function WeatherMap({
   stations,
   selectedStation,
@@ -36,12 +42,100 @@ export default function WeatherMap({
   zoom = 6,
   className = ''
 }: WeatherMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.CircleMarker[]>([])
 
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [legendPosition, setLegendPosition] = useState<DraggablePosition>({ x: 16, y: -16 }) // bottom-left
+  const [countPosition, setCountPosition] = useState<DraggablePosition>({ x: -16, y: 16 }) // top-right
+  const [dragging, setDragging] = useState<'legend' | 'count' | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number; posX: number; posY: number } | null>(null)
+
   // Calculate center from stations if not provided
   const mapCenter = center || calculateCenter(stations)
+
+  // Handle fullscreen
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return
+
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true)
+        // Invalidate map size after fullscreen
+        setTimeout(() => {
+          mapInstanceRef.current?.invalidateSize()
+        }, 100)
+      }).catch(console.error)
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false)
+        setTimeout(() => {
+          mapInstanceRef.current?.invalidateSize()
+        }, 100)
+      }).catch(console.error)
+    }
+  }, [])
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+      setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize()
+      }, 100)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // Drag handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent, element: 'legend' | 'count') => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(element)
+    const pos = element === 'legend' ? legendPosition : countPosition
+    dragStartRef.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y }
+  }, [legendPosition, countPosition])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragging || !dragStartRef.current || !containerRef.current) return
+
+    const container = containerRef.current.getBoundingClientRect()
+    const deltaX = e.clientX - dragStartRef.current.x
+    const deltaY = e.clientY - dragStartRef.current.y
+
+    const newX = dragStartRef.current.posX + deltaX
+    const newY = dragStartRef.current.posY + deltaY
+
+    // Clamp to container bounds (with some padding)
+    const clampedX = Math.max(-container.width + 100, Math.min(container.width - 100, newX))
+    const clampedY = Math.max(-container.height + 50, Math.min(container.height - 50, newY))
+
+    if (dragging === 'legend') {
+      setLegendPosition({ x: clampedX, y: clampedY })
+    } else {
+      setCountPosition({ x: clampedX, y: clampedY })
+    }
+  }, [dragging])
+
+  const handleMouseUp = useCallback(() => {
+    setDragging(null)
+    dragStartRef.current = null
+  }, [])
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [dragging, handleMouseMove, handleMouseUp])
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -151,13 +245,82 @@ export default function WeatherMap({
     map.setView(center, zoom)
   }, [center, zoom])
 
+  // Calculate legend style based on position
+  const getLegendStyle = () => {
+    const style: React.CSSProperties = {
+      position: 'absolute',
+      zIndex: 1000,
+      cursor: dragging === 'legend' ? 'grabbing' : 'grab',
+    }
+
+    if (legendPosition.x >= 0) {
+      style.left = legendPosition.x
+    } else {
+      style.right = -legendPosition.x
+    }
+
+    if (legendPosition.y >= 0) {
+      style.top = legendPosition.y
+    } else {
+      style.bottom = -legendPosition.y
+    }
+
+    return style
+  }
+
+  const getCountStyle = () => {
+    const style: React.CSSProperties = {
+      position: 'absolute',
+      zIndex: 1000,
+      cursor: dragging === 'count' ? 'grabbing' : 'grab',
+    }
+
+    if (countPosition.x >= 0) {
+      style.left = countPosition.x
+    } else {
+      style.right = -countPosition.x
+    }
+
+    if (countPosition.y >= 0) {
+      style.top = countPosition.y
+    } else {
+      style.bottom = -countPosition.y
+    }
+
+    return style
+  }
+
   return (
-    <div className={`relative ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative ${className} ${isFullscreen ? 'bg-white' : ''}`}
+      style={isFullscreen ? { width: '100vw', height: '100vh' } : undefined}
+    >
       <div ref={mapRef} className="w-full h-full rounded-lg" style={{ minHeight: '300px' }} />
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-[1000]">
-        <div className="text-xs font-semibold text-gray-700 mb-2">Nível de Risco</div>
+      {/* Fullscreen button */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-2 z-[1000] hover:bg-gray-100 transition-colors"
+        title={isFullscreen ? 'Sair do fullscreen' : 'Abrir em fullscreen'}
+      >
+        {isFullscreen ? (
+          <Minimize2 className="h-4 w-4 text-gray-700" />
+        ) : (
+          <Maximize2 className="h-4 w-4 text-gray-700" />
+        )}
+      </button>
+
+      {/* Legend - draggable */}
+      <div
+        style={getLegendStyle()}
+        onMouseDown={(e) => handleMouseDown(e, 'legend')}
+        className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 select-none"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <GripVertical className="h-3 w-3 text-gray-400" />
+          <span className="text-xs font-semibold text-gray-700">Nível de Risco</span>
+        </div>
         <div className="space-y-1.5">
           {Object.entries(ALERT_COLORS).map(([level, color]) => (
             <div key={level} className="flex items-center gap-2">
@@ -173,8 +336,13 @@ export default function WeatherMap({
         </div>
       </div>
 
-      {/* Station count */}
-      <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 z-[1000]">
+      {/* Station count - draggable */}
+      <div
+        style={getCountStyle()}
+        onMouseDown={(e) => handleMouseDown(e, 'count')}
+        className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 select-none flex items-center gap-2"
+      >
+        <GripVertical className="h-3 w-3 text-gray-400" />
         <span className="text-xs text-gray-600">
           <span className="font-semibold text-gray-900">{stations.length}</span> estações
         </span>
