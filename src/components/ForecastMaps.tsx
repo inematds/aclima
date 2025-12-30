@@ -154,63 +154,22 @@ export default function ForecastMaps({
     }
   }, [latitude, longitude])
 
-  // Update radar layer when frame changes
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map || !rainViewerData || activeLayer !== 'radar') return
-
-    const allFrames = [...(rainViewerData.radar?.past || []), ...(rainViewerData.radar?.nowcast || [])]
-    const frameData = allFrames[currentFrame]
-    if (!frameData) return
-
-    // Remove existing radar layer
-    if (radarLayerRef.current) {
-      map.removeLayer(radarLayerRef.current)
-    }
-
-    // Add new radar layer
-    const radarLayer = L.tileLayer(
-      `${rainViewerData.host}${frameData.path}/256/{z}/{x}/{y}/2/1_1.png`,
-      {
-        opacity: 0.8,
-        maxZoom: 18,
-      }
-    )
-    radarLayer.addTo(map)
-    radarLayerRef.current = radarLayer
-  }, [rainViewerData, currentFrame, activeLayer])
-
-  // Update OWM layer when active layer changes
+  // Single effect to manage all overlay layers
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
 
-    // Remove existing OWM layer
+    // Always remove existing layers first
+    if (radarLayerRef.current) {
+      map.removeLayer(radarLayerRef.current)
+      radarLayerRef.current = null
+    }
     if (owmLayerRef.current) {
       map.removeLayer(owmLayerRef.current)
       owmLayerRef.current = null
     }
 
-    // Remove radar layer if switching away
-    if (activeLayer !== 'radar' && radarLayerRef.current) {
-      map.removeLayer(radarLayerRef.current)
-      radarLayerRef.current = null
-    }
-
-    // Add OWM layer if needed
-    if (activeLayer !== 'radar' && hasOwmKey && layerConfig[activeLayer].owmLayer) {
-      const owmLayer = L.tileLayer(
-        `https://tile.openweathermap.org/map/${layerConfig[activeLayer].owmLayer}/{z}/{x}/{y}.png?appid=${owmApiKey}`,
-        {
-          opacity: 0.8,
-          maxZoom: 18,
-        }
-      )
-      owmLayer.addTo(map)
-      owmLayerRef.current = owmLayer
-    }
-
-    // Re-add radar layer if switching back to radar
+    // Add appropriate layer based on activeLayer
     if (activeLayer === 'radar' && rainViewerData) {
       const allFrames = [...(rainViewerData.radar?.past || []), ...(rainViewerData.radar?.nowcast || [])]
       const frameData = allFrames[currentFrame]
@@ -225,6 +184,16 @@ export default function ForecastMaps({
         radarLayer.addTo(map)
         radarLayerRef.current = radarLayer
       }
+    } else if (activeLayer !== 'radar' && hasOwmKey && layerConfig[activeLayer].owmLayer) {
+      const owmLayer = L.tileLayer(
+        `https://tile.openweathermap.org/map/${layerConfig[activeLayer].owmLayer}/{z}/{x}/{y}.png?appid=${owmApiKey}`,
+        {
+          opacity: 0.8,
+          maxZoom: 18,
+        }
+      )
+      owmLayer.addTo(map)
+      owmLayerRef.current = owmLayer
     }
   }, [activeLayer, hasOwmKey, owmApiKey, rainViewerData, currentFrame])
 
