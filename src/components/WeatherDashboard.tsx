@@ -132,18 +132,25 @@ export default function WeatherDashboard() {
   const capitalEntry = Object.values(BRAZILIAN_CAPITALS).find(
     cap => cap.stateCode === effectiveState
   )
-  const defaultCoords = capitalEntry
+  const capitalCoords = capitalEntry
     ? { lat: capitalEntry.latitude, lng: capitalEntry.longitude }
     : { lat: -15.7801, lng: -47.9292 }
 
-  // Coordenadas efetivas (cidade buscada ou capital do estado)
+  // Coordenadas da geolocalização (se disponível)
+  const geoCoords = geolocation.latitude && geolocation.longitude
+    ? { lat: geolocation.latitude, lng: geolocation.longitude }
+    : null
+
+  // Coordenadas efetivas (prioridade: cidade buscada > geolocalização > capital do estado)
   const effectiveCoords = selectedCity
     ? { lat: selectedCity.latitude, lng: selectedCity.longitude }
-    : defaultCoords
+    : geoCoords || capitalCoords
 
   // Nome da localização atual
   const locationName = selectedCity
     ? `${selectedCity.name}, ${selectedCity.state}`
+    : geoCoords
+    ? 'Sua localização'
     : capitalEntry?.name || stateInfo?.capital || stateInfo?.name
 
   // Buscar cidade
