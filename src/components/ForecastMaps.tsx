@@ -324,12 +324,19 @@ export default function ForecastMaps({
 
       {/* Map view */}
       <div className="relative" style={{ height: '400px' }}>
-        {loading && !mapInstanceRef.current ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+        {/* Map container - always rendered */}
+        <div ref={mapRef} className="w-full h-full" />
+
+        {/* Loading overlay */}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 z-[1000]">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           </div>
-        ) : error ? (
-          <div className="absolute inset-0 flex items-center justify-center text-center p-4 bg-gray-100">
+        )}
+
+        {/* Error overlay */}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center text-center p-4 bg-gray-100 z-[1000]">
             <div>
               <p className="text-red-500 mb-2">{error}</p>
               <button
@@ -340,9 +347,11 @@ export default function ForecastMaps({
               </button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* Overlays - only show when not loading/error */}
+        {!loading && !error && (
           <>
-            <div ref={mapRef} className="w-full h-full" />
 
             {/* Timestamp badge (radar only) */}
             {activeLayer === 'radar' && currentFrameData && (
