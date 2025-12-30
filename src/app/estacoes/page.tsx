@@ -5,6 +5,8 @@ import { Radio, Droplets, Thermometer, Wind, Clock, CheckCircle, XCircle, AlertT
 import CapitalSelector from '@/components/CapitalSelector'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 import { useWeather, formatTimeAgo } from '@/hooks/useWeather'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileMapDynamic from '@/components/mobile/MobileMapDynamic'
 
 type StationStatus = 'online' | 'offline' | 'delayed'
 
@@ -14,7 +16,7 @@ const statusConfig: Record<StationStatus, { color: string; bg: string; label: st
   delayed: { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Atrasado', icon: Clock },
 }
 
-export default function EstacoesPage() {
+function EstacoesContent() {
   const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
 
   const {
@@ -248,5 +250,13 @@ export default function EstacoesPage() {
         Dados meteorológicos: Open-Meteo API | Atualização a cada 5 minutos
       </div>
     </div>
+  )
+}
+
+export default function EstacoesPage() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileMapDynamic />}>
+      <EstacoesContent />
+    </ResponsiveLayout>
   )
 }
