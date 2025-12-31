@@ -17,6 +17,8 @@ import {
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import ForecastMapsDynamic from '@/components/ForecastMapsDynamic'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileStatePanelDynamic from '@/components/mobile/MobileStatePanelDynamic'
 import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS, type StateCode } from '@/types/weather'
 import { useStateWeather, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -28,7 +30,7 @@ const statusConfig: Record<SensorStatus, { color: string; bg: string; icon: type
   offline: { color: 'text-red-600', bg: 'bg-red-100', icon: XCircle },
 }
 
-export default function EstadoPainel3Page() {
+function EstadoPainel3Content() {
   const [selectedStation, setSelectedStation] = useState<string | null>(null)
   const [selectedState, setSelectedState] = useState<StateCode>('SP')
 
@@ -505,5 +507,13 @@ export default function EstadoPainel3Page() {
         Fonte: Estações INMET + Open-Meteo API | Atualização a cada 5 minutos
       </div>
     </div>
+  )
+}
+
+export default function EstadoPainel3Page() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileStatePanelDynamic />}>
+      <EstadoPainel3Content />
+    </ResponsiveLayout>
   )
 }

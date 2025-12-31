@@ -17,6 +17,8 @@ import {
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import ForecastMapsDynamic from '@/components/ForecastMapsDynamic'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileStatePanelDynamic from '@/components/mobile/MobileStatePanelDynamic'
 import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS, type StateCode } from '@/types/weather'
 import { useStateWeather, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -52,7 +54,7 @@ const alertLevelConfig: Record<AlertLevel, {
   },
 }
 
-export default function EstadoPainel2Page() {
+function EstadoPainel2Content() {
   const [selectedStation, setSelectedStation] = useState<string | null>(null)
   const [selectedState, setSelectedState] = useState<StateCode>('SP')
 
@@ -429,5 +431,13 @@ export default function EstadoPainel2Page() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function EstadoPainel2Page() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileStatePanelDynamic />}>
+      <EstadoPainel2Content />
+    </ResponsiveLayout>
   )
 }

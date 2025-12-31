@@ -13,6 +13,8 @@ import {
 import StateSelector from '@/components/StateSelector'
 import WeatherMapDynamic from '@/components/WeatherMapDynamic'
 import ForecastMapsDynamic from '@/components/ForecastMapsDynamic'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileStatePanelDynamic from '@/components/mobile/MobileStatePanelDynamic'
 import { BRAZILIAN_STATES, BRAZILIAN_CAPITALS, type StateCode } from '@/types/weather'
 import { useStateWeather, useAlerts, formatTimeAgo } from '@/hooks/useWeather'
 
@@ -25,7 +27,7 @@ const riskConfig: Record<RiskLevel, { color: string; bg: string; label: string }
   severe: { color: 'text-red-700', bg: 'bg-red-500', label: 'Severo' },
 }
 
-export default function EstadoPainel1Page() {
+function EstadoPainel1Content() {
   const [selectedStation, setSelectedStation] = useState<string | null>(null)
   const [selectedState, setSelectedState] = useState<StateCode>('SP')
 
@@ -460,5 +462,13 @@ export default function EstadoPainel1Page() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function EstadoPainel1Page() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileStatePanelDynamic />}>
+      <EstadoPainel1Content />
+    </ResponsiveLayout>
   )
 }
