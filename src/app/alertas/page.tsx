@@ -5,6 +5,8 @@ import { AlertTriangle, AlertCircle, XCircle, MapPin, Clock, Filter, Loader2, Re
 import CapitalSelector from '@/components/CapitalSelector'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
 import { useWeather, formatTimeAgo } from '@/hooks/useWeather'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileAlerts from '@/components/mobile/MobileAlerts'
 
 type AlertLevel = 'attention' | 'alert' | 'severe'
 
@@ -55,7 +57,7 @@ function getAlertMessage(level: AlertLevel, rain1h: number, rain24h: number): st
   return `Chuva moderada: ${rain1h}mm na última hora. Situação sob controle.`
 }
 
-export default function AlertasPage() {
+function AlertasContent() {
   const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
   const [filterLevel, setFilterLevel] = useState<'all' | AlertLevel>('all')
 
@@ -264,5 +266,13 @@ export default function AlertasPage() {
         Dados meteorológicos: Open-Meteo API | Alertas calculados automaticamente
       </div>
     </div>
+  )
+}
+
+export default function AlertasPage() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileAlerts />}>
+      <AlertasContent />
+    </ResponsiveLayout>
   )
 }

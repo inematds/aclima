@@ -319,9 +319,9 @@ export default function MobileDashboard() {
 
       {/* Station Detail Modal */}
       {selectedStation && (
-        <div className="fixed inset-0 bg-black/60 z-[100]" onClick={() => setSelectedStation(null)}>
+        <div className="fixed inset-0 bg-black/60 z-[99]" onClick={() => setSelectedStation(null)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[70vh] overflow-auto"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[70vh] overflow-auto safe-area-bottom"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white px-4 pt-3 pb-2">

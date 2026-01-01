@@ -113,7 +113,7 @@ export default function MobileMap() {
   }
 
   return (
-    <div className="fixed inset-0 pb-16">
+    <div className="fixed inset-0 pb-20">
       {/* Map */}
       <div ref={mapRef} className="w-full h-full" />
 
@@ -172,7 +172,7 @@ export default function MobileMap() {
 
       {/* Station detail bottom sheet */}
       {selectedStation && (
-        <div className="absolute bottom-20 left-4 right-4 bg-white rounded-xl shadow-lg z-[1000] overflow-hidden">
+        <div className="absolute bottom-24 left-4 right-4 bg-white rounded-xl shadow-lg z-[99] overflow-hidden">
           <div className="p-4">
             <div className="flex items-start justify-between">
               <div>

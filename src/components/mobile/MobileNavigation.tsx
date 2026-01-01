@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, Map, AlertTriangle, Radio, Menu, X } from 'lucide-react'
+import { Home, Map, AlertTriangle, Radio, Menu, X, Calendar, CalendarDays, History } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -86,49 +86,104 @@ export default function MobileNavigation() {
                 </button>
               </div>
 
-              {/* Menu Items */}
-              <div className="space-y-2">
-                <Link
-                  href="/estado-painel1"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Map className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Painel Estado 1</div>
-                    <div className="text-sm text-gray-500">Visão detalhada</div>
-                  </div>
-                </Link>
+              {/* Forecast Items */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                  Previsões
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    href="/previsao-7dias"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Previsão 7 Dias</div>
+                      <div className="text-sm text-gray-500">Previsão semanal com mapas</div>
+                    </div>
+                  </Link>
 
-                <Link
-                  href="/estado-painel2"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <Map className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Painel Estado 2</div>
-                    <div className="text-sm text-gray-500">Layout alternativo</div>
-                  </div>
-                </Link>
+                  <Link
+                    href="/previsao-16dias"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <CalendarDays className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Previsão 16 Dias</div>
+                      <div className="text-sm text-gray-500">Previsão estendida</div>
+                    </div>
+                  </Link>
 
-                <Link
-                  href="/estado-painel3"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Map className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Painel Estado 3</div>
-                    <div className="text-sm text-gray-500">Compacto</div>
-                  </div>
-                </Link>
+                  <Link
+                    href="/historico-30dias"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <History className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Histórico 30 Dias</div>
+                      <div className="text-sm text-gray-500">Gráficos e análises</div>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Estado Items */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                  Estados (UF)
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    href="/estado-painel1"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Map className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Painel Estado 1</div>
+                      <div className="text-sm text-gray-500">Visão detalhada</div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/estado-painel2"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Map className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Painel Estado 2</div>
+                      <div className="text-sm text-gray-500">Layout alternativo</div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/estado-painel3"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Map className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Painel Estado 3</div>
+                      <div className="text-sm text-gray-500">Compacto</div>
+                    </div>
+                  </Link>
+                </div>
               </div>
 
               {/* App Info */}

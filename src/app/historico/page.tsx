@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Calendar, TrendingUp, Droplets, BarChart3, Download, ChevronDown, Loader2, AlertTriangle, FlaskConical } from 'lucide-react'
 import CapitalSelector from '@/components/CapitalSelector'
 import { BRAZILIAN_CAPITALS, type CapitalSlug } from '@/types/weather'
+import ResponsiveLayout from '@/components/ResponsiveLayout'
+import MobileHistorico from '@/components/mobile/MobileHistorico'
 
 type Period = '24h' | '7d' | '30d'
 
@@ -24,7 +26,7 @@ function SimulationBadge({ className = '' }: { className?: string }) {
   )
 }
 
-export default function HistoricoPage() {
+function HistoricoContent() {
   const [period, setPeriod] = useState<Period>('24h')
   const [selectedCapital, setSelectedCapital] = useState<CapitalSlug>('sao-paulo')
   const [hourlyData, setHourlyData] = useState<HourlyData[]>([])
@@ -388,5 +390,13 @@ export default function HistoricoPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function HistoricoPage() {
+  return (
+    <ResponsiveLayout mobileContent={<MobileHistorico />}>
+      <HistoricoContent />
+    </ResponsiveLayout>
   )
 }

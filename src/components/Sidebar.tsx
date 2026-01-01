@@ -13,7 +13,10 @@ import {
   ChevronRight,
   LayoutDashboard,
   Map,
-  ExternalLink
+  ExternalLink,
+  Calendar,
+  CalendarDays,
+  History
 } from 'lucide-react'
 
 const menuItems = [
@@ -40,6 +43,27 @@ const menuItems = [
     href: '/historico',
     icon: BarChart3,
     description: 'Dados históricos'
+  },
+]
+
+const forecastItems = [
+  {
+    name: 'Previsão 7 Dias',
+    href: '/previsao-7dias',
+    icon: Calendar,
+    description: 'Previsão semanal com mapas'
+  },
+  {
+    name: 'Previsão 16 Dias',
+    href: '/previsao-16dias',
+    icon: CalendarDays,
+    description: 'Previsão estendida'
+  },
+  {
+    name: 'Histórico 30 Dias',
+    href: '/historico-30dias',
+    icon: History,
+    description: 'Gráficos e análises'
   },
 ]
 
@@ -114,6 +138,43 @@ export default function Sidebar() {
                     flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
                     ${isActive
                       ? 'bg-blue-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }
+                  `}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <item.icon size={20} />
+                  {!collapsed && (
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-xs text-slate-400">{item.description}</div>
+                    </div>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+
+        {/* Seção Previsões */}
+        {!collapsed && (
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Previsões
+            </p>
+          </div>
+        )}
+        <ul className="space-y-1 px-2">
+          {forecastItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`
+                    flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                    ${isActive
+                      ? 'bg-green-600 text-white'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }
                   `}

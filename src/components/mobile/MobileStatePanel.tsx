@@ -251,9 +251,9 @@ export default function MobileStatePanel() {
 
       {/* State Selector Modal */}
       {showStateSelector && (
-        <div className="fixed inset-0 bg-black/60 z-[100]" onClick={() => setShowStateSelector(false)}>
+        <div className="fixed inset-0 bg-black/60 z-[99]" onClick={() => setShowStateSelector(false)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-auto"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[80vh] overflow-auto safe-area-bottom"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white px-4 pt-3 pb-2 border-b">
@@ -289,9 +289,9 @@ export default function MobileStatePanel() {
 
       {/* Station Detail Modal */}
       {selectedStation && (
-        <div className="fixed inset-0 bg-black/60 z-[100]" onClick={() => setSelectedStation(null)}>
+        <div className="fixed inset-0 bg-black/60 z-[99]" onClick={() => setSelectedStation(null)}>
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[75vh] overflow-auto"
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[75vh] overflow-auto safe-area-bottom"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white px-4 pt-3 pb-2">
