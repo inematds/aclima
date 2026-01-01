@@ -339,6 +339,46 @@ export default function Previsao16DiasPage() {
         </div>
       </div>
 
+      {/* 16-day precipitation chart */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Droplets className="h-5 w-5 text-blue-500" />
+          Precipitacao 16 Dias
+        </h3>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>Total previsto: <strong>{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
+            <span>Dias com chuva: <strong>{daily.filter(d => d.precipitation_sum > 0).length}</strong></span>
+          </div>
+          <div className="flex items-end gap-px h-32 bg-gray-50 rounded-lg p-2">
+            {daily.map((day, i) => {
+              const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
+              const height = (day.precipitation_sum / maxPrecip) * 100
+              return (
+                <div
+                  key={day.date}
+                  className="flex-1 flex flex-col items-center gap-1 group"
+                  onClick={() => setSelectedDay(i)}
+                >
+                  <div className="flex-1 w-full flex flex-col justify-end cursor-pointer">
+                    <div
+                      className={`rounded-t w-full transition-all ${
+                        selectedDay === i ? 'bg-blue-600' : 'bg-blue-400 hover:bg-blue-500'
+                      }`}
+                      style={{ height: `${Math.max(height, day.precipitation_sum > 0 ? 8 : 0)}%` }}
+                    />
+                  </div>
+                  <div className="text-[9px] text-gray-400">{new Date(day.date).getDate()}</div>
+                  <div className="absolute bottom-full mb-1 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
+                    {formatShortDate(day.date)}: {day.precipitation_sum.toFixed(1)}mm
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Full 16-day table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">

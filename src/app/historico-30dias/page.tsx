@@ -44,29 +44,39 @@ function BarChart({
   maxValue?: number
   unit: string
 }) {
-  const max = maxValue || Math.max(...data.map(d => d[valueKey] || 0)) || 1
+  const values = data.map(d => d[valueKey] || 0)
+  const max = maxValue || Math.max(...values) || 1
+  const total = values.reduce((a, b) => a + b, 0)
 
   return (
-    <div className="flex items-end gap-0.5 h-32">
-      {data.map((item, i) => {
-        const value = item[valueKey] || 0
-        const height = (value / max) * 100
-        return (
-          <div
-            key={i}
-            className="flex-1 group relative"
-            title={`${formatDate(item.date)}: ${value.toFixed(1)} ${unit}`}
-          >
+    <div className="space-y-2">
+      {/* Summary */}
+      <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+        <span>Total: <strong>{total.toFixed(1)} {unit}</strong></span>
+        <span>Max: <strong>{Math.max(...values).toFixed(1)} {unit}</strong></span>
+      </div>
+
+      {/* Chart */}
+      <div className="flex items-end gap-px h-40 bg-gray-50 rounded-lg p-2">
+        {data.map((item, i) => {
+          const value = item[valueKey] || 0
+          const height = (value / max) * 100
+          return (
             <div
-              className={`${color} rounded-t transition-all hover:opacity-80`}
-              style={{ height: `${Math.max(height, 2)}%` }}
-            />
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
-              {formatDate(item.date)}: {value.toFixed(1)} {unit}
+              key={i}
+              className="flex-1 group relative flex flex-col justify-end h-full"
+            >
+              <div
+                className={`${color} rounded-t transition-all hover:opacity-80 min-h-[2px]`}
+                style={{ height: `${Math.max(height, value > 0 ? 5 : 0)}%` }}
+              />
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
+                {formatDate(item.date)}: {value.toFixed(1)} {unit}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

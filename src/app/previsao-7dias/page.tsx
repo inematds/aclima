@@ -251,6 +251,37 @@ export default function Previsao7DiasPage() {
               </div>
             </div>
           </div>
+
+          {/* 7-day precipitation chart */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-blue-500" />
+              Precipitacao 7 Dias
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <span>Total: <strong>{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
+              </div>
+              <div className="flex items-end gap-1 h-32 bg-gray-50 rounded-lg p-2">
+                {daily.map((day, i) => {
+                  const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
+                  const height = (day.precipitation_sum / maxPrecip) * 100
+                  return (
+                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="flex-1 w-full flex flex-col justify-end">
+                        <div
+                          className="bg-blue-500 rounded-t w-full transition-all hover:bg-blue-600"
+                          style={{ height: `${Math.max(height, day.precipitation_sum > 0 ? 8 : 0)}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-gray-500">{new Date(day.date).getDate()}</div>
+                      <div className="text-[10px] font-medium text-blue-600">{day.precipitation_sum.toFixed(1)}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right: Map */}
