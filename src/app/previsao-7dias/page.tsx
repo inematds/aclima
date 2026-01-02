@@ -258,27 +258,38 @@ export default function Previsao7DiasPage() {
               <Droplets className="h-5 w-5 text-blue-500" />
               Precipitacao 7 Dias
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Total: <strong>{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
+                <span>Total: <strong className="text-blue-600">{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
+                <span>Dias com chuva: <strong>{daily.filter(d => d.precipitation_sum > 0).length}</strong></span>
               </div>
-              <div className="flex items-end gap-1 h-32 bg-gray-50 rounded-lg p-2">
-                {daily.map((day, i) => {
-                  const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
-                  const height = (day.precipitation_sum / maxPrecip) * 100
-                  return (
-                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                      <div className="flex-1 w-full flex flex-col justify-end">
-                        <div
-                          className="bg-blue-500 rounded-t w-full transition-all hover:bg-blue-600"
-                          style={{ height: `${Math.max(height, day.precipitation_sum > 0 ? 8 : 0)}%` }}
-                        />
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-end gap-2 h-28">
+                  {daily.map((day, i) => {
+                    const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
+                    const heightPct = (day.precipitation_sum / maxPrecip) * 100
+                    const barHeight = day.precipitation_sum > 0 ? Math.max(heightPct, 10) : 0
+                    return (
+                      <div key={day.date} className="flex-1 flex flex-col items-center h-full">
+                        <div className="flex-1 w-full flex items-end justify-center">
+                          <div
+                            className="w-full max-w-[40px] bg-blue-500 rounded-t transition-all hover:bg-blue-600 cursor-pointer"
+                            style={{ height: `${barHeight}%`, minHeight: day.precipitation_sum > 0 ? '8px' : '0' }}
+                            title={`${day.precipitation_sum.toFixed(1)} mm`}
+                          />
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-500">{new Date(day.date).getDate()}</div>
-                      <div className="text-[10px] font-medium text-blue-600">{day.precipitation_sum.toFixed(1)}</div>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-2 mt-2 border-t border-gray-200 pt-2">
+                  {daily.map((day) => (
+                    <div key={day.date} className="flex-1 text-center">
+                      <div className="text-[10px] text-gray-500">{new Date(day.date).getDate()}/{new Date(day.date).getMonth() + 1}</div>
+                      <div className="text-xs font-semibold text-blue-600">{day.precipitation_sum.toFixed(1)}</div>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
             </div>
           </div>

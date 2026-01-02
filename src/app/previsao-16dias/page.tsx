@@ -345,36 +345,52 @@ export default function Previsao16DiasPage() {
           <Droplets className="h-5 w-5 text-blue-500" />
           Precipitacao 16 Dias
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>Total previsto: <strong>{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
+            <span>Total previsto: <strong className="text-blue-600">{daily.reduce((sum, d) => sum + d.precipitation_sum, 0).toFixed(1)} mm</strong></span>
             <span>Dias com chuva: <strong>{daily.filter(d => d.precipitation_sum > 0).length}</strong></span>
           </div>
-          <div className="flex items-end gap-px h-32 bg-gray-50 rounded-lg p-2">
-            {daily.map((day, i) => {
-              const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
-              const height = (day.precipitation_sum / maxPrecip) * 100
-              return (
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="flex items-end gap-1 h-32">
+              {daily.map((day, i) => {
+                const maxPrecip = Math.max(...daily.map(d => d.precipitation_sum)) || 1
+                const heightPct = (day.precipitation_sum / maxPrecip) * 100
+                const barHeight = day.precipitation_sum > 0 ? Math.max(heightPct, 10) : 0
+                return (
+                  <div
+                    key={day.date}
+                    className="flex-1 flex flex-col items-center h-full cursor-pointer group relative"
+                    onClick={() => setSelectedDay(i)}
+                  >
+                    <div className="flex-1 w-full flex items-end justify-center">
+                      <div
+                        className={`w-full max-w-[24px] rounded-t transition-all ${
+                          selectedDay === i ? 'bg-blue-600' : 'bg-blue-400 hover:bg-blue-500'
+                        }`}
+                        style={{ height: `${barHeight}%`, minHeight: day.precipitation_sum > 0 ? '6px' : '0' }}
+                      />
+                    </div>
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
+                      {formatShortDate(day.date)}: {day.precipitation_sum.toFixed(1)}mm
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex gap-1 mt-2 border-t border-gray-200 pt-2">
+              {daily.map((day, i) => (
                 <div
                   key={day.date}
-                  className="flex-1 flex flex-col items-center gap-1 group"
+                  className={`flex-1 text-center cursor-pointer rounded py-1 ${selectedDay === i ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
                   onClick={() => setSelectedDay(i)}
                 >
-                  <div className="flex-1 w-full flex flex-col justify-end cursor-pointer">
-                    <div
-                      className={`rounded-t w-full transition-all ${
-                        selectedDay === i ? 'bg-blue-600' : 'bg-blue-400 hover:bg-blue-500'
-                      }`}
-                      style={{ height: `${Math.max(height, day.precipitation_sum > 0 ? 8 : 0)}%` }}
-                    />
-                  </div>
-                  <div className="text-[9px] text-gray-400">{new Date(day.date).getDate()}</div>
-                  <div className="absolute bottom-full mb-1 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none">
-                    {formatShortDate(day.date)}: {day.precipitation_sum.toFixed(1)}mm
+                  <div className="text-[9px] text-gray-500">{new Date(day.date).getDate()}</div>
+                  <div className={`text-[10px] font-semibold ${day.precipitation_sum > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {day.precipitation_sum.toFixed(1)}
                   </div>
                 </div>
-              )
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </div>
